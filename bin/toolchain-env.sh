@@ -13,7 +13,8 @@ show_help()
       -p|--print                       Print the set environment variables
       --write-make-env-inc             Write include file for make that sets the environment
 
-      --cc=<cc compiler>
+      --toolchain=<gcc|clang>
+      --gcc-suffix=<value>
       --gcc-installation=<directory>
       --clang-installation=<directory>
       --stdlib=<libcxx|stdcxx>
@@ -28,6 +29,9 @@ show_help()
 EOF
 }
 
+# Load the defaults
+source "$(dirname "$0")/env.sh"
+
 # -------------------------------------------------------------------------------------------- parse
 
 (( $# == 0 )) && show_help && exit 0
@@ -40,9 +44,9 @@ WRITE_MAKE_ENV_INC="False"
 TARGET=""
 TOOL=""
 GCC_SUFFIX=""
-GCC_INSTALLATION=""
-CLANG_INSTALLATION=""
 STDLIB=""
+GCC_INSTALLATION="$TOOLCHAINS_DIR/$DEFAULT_GCC_VERSION"
+CLANG_INSTALLATION="$TOOLCHAINS_DIR/$DEFAULT_LLVM_VERSION"
 BUILD_CONFIG="debug"
 LTO="False"
 COVERAGE="False"
