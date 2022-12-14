@@ -44,10 +44,10 @@ build()
 
     unset LIBS
     
-    ./configure --prefix=$PREFIX --enable-shared --enable-static --enable-release --enable-icu-config --enable-rpath
-    make clean
-    make -j$(nproc)
-    make install
+    nice ./configure --prefix=$PREFIX --enable-shared --enable-static --enable-release --enable-icu-config --enable-rpath
+    nice make clean
+    nice make -j$(nproc)
+    nice make install
 }
 
 # ------------------------------------------------------------------------ parse

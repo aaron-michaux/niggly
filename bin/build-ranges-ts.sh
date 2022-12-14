@@ -52,8 +52,8 @@ build()
            -D CMAKE_INSTALL_PREFIX:PATH=$PREFIX   \
            ..
 
-    make -j$(nproc) VERBOSE=1
-    make install
+    nice make -j$(nproc) VERBOSE=1
+    nice make install
 }
 
 # ------------------------------------------------------------------------ parse

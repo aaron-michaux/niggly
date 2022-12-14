@@ -55,8 +55,8 @@ build_google_benchmark()
            -D CMAKE_INSTALL_PREFIX:PATH=$PREFIX   \
            ..
 
-    make -j$(nproc)
-    make install
+    nice make -j$(nproc)
+    nice make install
 }
 
 # ------------------------------------------------------------------------ parse

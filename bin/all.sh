@@ -83,7 +83,7 @@ install_library()
     for TOOLCHAIN in "gcc" "llvm" ; do
         for STDLIB in "--libcxx" "--stdcxx" ; do
             if [ "$SKIP" = "${TOOLCHAIN}${STDLIB}" ] ; then
-                echo "skipping $SCRIPT for $SKIP, this combination does not build"
+                echo "Skipping $SCRIPT for $SKIP, this combination does not build"
             else
                 COMMAND="./$SCRIPT  $OPTIONS   $FORCE_LIBS  --toolchain=$TOOLCHAIN  $STDLIB"
                 $COMMAND && SUCCESS="True" || SUCCESS="False"
@@ -111,6 +111,7 @@ install_library  build-ranges-ts.sh
 install_library  build-liburing.sh         
 install_library  build-unifex.sh         
 install_library  build-grpc.sh               "gcc--libcxx"
+install_library  build-asio-grpc.sh          "gcc--libcxx"
 
 if [ "$EXIT_CODE" != "0" ] ; then
     echo "Exit-Code = $EXIT_CODE, the following failed to build:"

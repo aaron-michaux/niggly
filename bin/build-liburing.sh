@@ -42,8 +42,8 @@ build()
     git fetch
     git checkout ${VERSION}
 
-    ./configure --prefix=$PREFIX --cc=$CC --cxx=$CXX
-    make install -j$(nproc)
+    nice ./configure --prefix=$PREFIX --cc=$CC --cxx=$CXX
+    nice make install -j$(nproc)
 }
 
 # ------------------------------------------------------------------------ parse

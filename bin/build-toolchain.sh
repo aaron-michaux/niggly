@@ -89,7 +89,7 @@ build_llvm()
          $SRC_D/llvm-project/llvm
 
     nice make -j$(nproc) 2>$BUILD_D/stderr.text | tee $BUILD_D/stdout.text
-    make install 2>>$BUILD_D/stderr.text | tee -a $BUILD_D/stdout.text
+    nice make install 2>>$BUILD_D/stderr.text | tee -a $BUILD_D/stdout.text
     cat $BUILD_D/stderr.text   
 }
 
@@ -129,8 +129,8 @@ build_gcc()
          --program-suffix=-${MAJOR_VERSION} \
          --enable-checking=release \
          --with-gcc-major-version-only
-    $TIMECMD nice make -j$(nproc) 2>$SRCD/build/stderr.text | tee $SRCD/build/stdout.text
-    make install | tee -a $SRCD/build/stdout.text
+    nice make -j$(nproc) 2>$SRCD/build/stderr.text | tee $SRCD/build/stdout.text
+    nice make install | tee -a $SRCD/build/stdout.text
 
     # Install symlinks to /usr/local
     ensure_link "$PREFIX/bin/gcc-${MAJOR_VERSION}"        /usr/local/bin/gcc-${MAJOR_VERSION}

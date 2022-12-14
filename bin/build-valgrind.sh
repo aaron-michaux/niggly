@@ -48,10 +48,10 @@ build_valgrind()
     unset CXXFLAGS
     unset LDFLAGS
     unset LIBS    
-    ./autogen.sh
-    ./configure --prefix="$TOOLS_DIR"
+    nice ./autogen.sh
+    nice ./configure --prefix="$TOOLS_DIR"
     nice make -j$(nproc)
-    make install
+    nice make install
 }
 
 # ------------------------------------------------------------------------ parse

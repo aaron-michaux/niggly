@@ -18,6 +18,8 @@ export CMAKE="$TOOLS_DIR/bin/cmake"
 export DEFAULT_LLVM_VERSION="clang-15.0.6"
 export DEFAULT_GCC_VERSION="gcc-12.2.0"
 
+export CXXSTD=c++23
+
 # --------------------------------------------------------------------- Platform
 export IS_UBUNTU=$([ -x /usr/bin/lsb_release ] && lsb_release -a 2>/dev/null | grep -q Ubuntu && echo "True" || echo "False")
 export IS_FEDORA=$([ -f /etc/fedora-release ] && echo "True" || echo "False")
@@ -127,115 +129,6 @@ list_toolchains()
     fi
 }
 
-setup_stdcxx()
-{
-    local TOOLCHAIN="$1"
-    local TRIPLE_LIST="$2"
-    local TOOLCHAIN_ROOT="$TOOLCHAINS_DIR/$TOOLCHAIN"
-    local CC_MAJOR_VERSION="$(echo ${TOOLCHAIN:4} | awk -F. '{ print $1 }')"
-    local CPP_DIR="$TOOLCHAIN_ROOT/include/c++/$CC_MAJOR_VERSION"
-   
-    if [ "${TOOLCHAIN:0:3}" != "gcc" ] ; then
-        echo "Must specify a gcc toolchain to find libstdcxx!" 1>&2 && exit 1
-    fi
-    
-    CXXFLAGS+=" -isystem$CPP_DIR"
-    CPP_INC_TRIPLE_DIR=""
-    for TRIPLE in $TRIPLE_LIST ; do
-        if [ -d "$CPP_DIR/$TRIPLE" ] ; then
-            CPP_INC_TRIPLE_DIR="$CPP_DIR/$TRIPLE"
-            break
-        fi
-    done
-    if [ "$CPP_INC_TRIPLE_DIR" = "" ] ; then
-        echo "Failed to find $CPP_DIR/[$TRIPLE_LIST] directory" 1>&2 && exit 1
-    fi
-    CXXFLAGS+=" -isystem$CPP_INC_TRIPLE_DIR"
-    
-    ADDITIONAL_LDFLAGS="-L$TOOLCHAIN_ROOT/lib64 -Wl,-rpath,$TOOLCHAIN_ROOT/lib64"
-    
-    CPP_LIB_TRIPLE_DIR=""
-    for TRIPLE in $TRIPLE_LIST ; do
-        if [ -d "$CPP_DIR/$TRIPLE" ] ; then
-            CPP_LIB_TRIPLE_DIR="$TOOLCHAIN_ROOT/lib/gcc/$TRIPLE/$CC_MAJOR_VERSION"
-            break
-        fi
-    done
-    if [ "$CPP_LIB_TRIPLE_DIR" = "" ] ; then
-        echo "Failed to find $TOOLCHAIN_ROOT/lib/gcc/[$TRIPLE_LIST]/$CC_MAJOR_VERSION directory" 1>&2 && exit 1
-    fi
-    ADDITIONAL_LDFLAGS+=" -L$CPP_LIB_TRIPLE_DIR -Wl,-rpath,$CPP_LIB_TRIPLE_DIR"
-    
-    if [ "$IS_GCC" = "True" ] ; then
-        CXXFLAGS="-nostdinc++ $CXXFLAGS"
-    fi
-    
-    export CXXFLAGS="$CXXFLAGS"
-    export LDFLAGS="$ADDITIONAL_LDFLAGS $LDFLAGS -lstdc++"    
-}
-
-
-setup_libcxx()
-{
-    local TOOLCHAIN="$1"
-    local TRIPLE_LIST="$2"
-    TOOLCHAIN_ROOT="$TOOLCHAINS_DIR/$TOOLCHAIN"
-
-    if [ "${TOOLCHAIN:0:5}" != "clang" ] ; then
-        echo "Must specify a clang toolchain to find libcxx!" 1>&2 && exit 1
-    fi
-
-    TRIPLE=""
-    for TEST_TRIPLE in $TRIPLE_LIST ; do
-        if [ -d "$TOOLCHAIN_ROOT/include/$TEST_TRIPLE/c++/v1" ] ; then
-            TRIPLE="$TEST_TRIPLE"
-            break
-        fi
-    done
-    if [ "$TRIPLE" = "" ] ; then
-        echo "Failed to find libcxx directory $TOOLCHAIN_ROOT/include/$TRIPLE/c++/v1" 1>&2
-        exit 1
-    fi
-    
-    PLATFORM_INC_DIR="$TOOLCHAIN_ROOT/include/$TRIPLE/c++/v1"
-    CPPINC_DIR="$TOOLCHAIN_ROOT/include"
-    CPPLIB_DIR="$TOOLCHAIN_ROOT/lib/$TRIPLE"
-
-    if [ ! -d "$PLATFORM_INC_DIR" ] ; then
-        echo "libcxx c++ directory not found: '$PLATFORM_INC_DIR'" 1>&2 && exit 1
-    fi
-    if [ ! -d "$CPPLIB_DIR" ] ; then
-        echo "Failed to find clang libc++ directory: '$CPPLIB_DIR'" 1>&2 && exit 1
-    fi
-    
-    EXTRA_CXXFLAGS="-isystem$CPPINC_DIR/c++/v1 -isystem$CPPINC_DIR -isystem$PLATFORM_INC_DIR"
-    START_LDFLAGS=""
-    END_LDFLAGS="-L$CPPLIB_DIR -lc++ -lc++abi -Wl,-rpath,$CPPLIB_DIR -lpthread"
-
-    if [ "$IS_GCC" = "True" ] ; then
-        EXTRA_CXXFLAGS="-nostdinc++ $EXTRA_CXXFLAGS"
-        export LDFLAGS="-nodefaultlibs $LDFLAGS $END_LDFLAGS -lc -lm -lgcc_s -static-libgcc -lgcc -L/lib64 -l:ld-linux-x86-64.so.2"
-
-    else
-        EXTRA_CXXFLAGS="-nostdinc++ $EXTRA_CXXFLAGS"
-        export LDFLAGS="-nostdlib++ $LDFLAGS $END_LDFLAGS"
-    fi
-    
-    export CXXFLAGS="$EXTRA_CXXFLAGS $CXXFLAGS"
-}
-
-major_version()
-{
-    local TOOLCHAIN="$1"
-    if [ "${TOOLCHAIN:0:3}" = "gcc" ] ; then
-        echo ${TOOLCHAIN:4} | awk -F. '{ print $1 }'
-    elif [ "$TOOLCHAIN:0:5}" = "clang" ] ; then
-        echo ${TOOLCHAIN:6} | awk -F. '{ print $1 }'
-    else
-        echo "unsupported toolchain: '$TOOLCHAIN'" 1>&2 && exit 1
-    fi
-}
-
 crosstool_setup()
 {
     # So, TOOLCHAIN could be gcc-12.2.0, but ALT_TOOLCHAIN would be clang-15.0.6
@@ -245,135 +138,90 @@ crosstool_setup()
     local GCC_TOOLCHAIN="$2"
     local LLVM_TOOLCHAIN="$3"
     local STDLIB="$4"
-
+    
     if [ "$TOOLCHAIN" = "gcc" ] ; then
         export TOOLCHAIN="$GCC_TOOLCHAIN"
     elif [ "$TOOLCHAIN" = "clang" ] || [ "$TOOLCHAIN" = "llvm" ] ; then
         export TOOLCHAIN="$LLVM_TOOLCHAIN"        
     fi
-
     ensure_toolchain_is_valid "$TOOLCHAIN"
+
+    GCC_MAJOR_VERSION="$(echo ${GCC_TOOLCHAIN:4} | awk -F. '{ print $1 }')"
 
     export GCC_DIR="$TOOLCHAINS_DIR/$GCC_TOOLCHAIN"
     export LLVM_DIR="$TOOLCHAINS_DIR/$LLVM_TOOLCHAIN"
 
     export PYTHON_FULL_VERSION=$(python3 --version)
     export PYTHON_VERSION="3.$(echo "$PYTHON_FULL_VERSION" | awk -F. '{ print $2 }')"
-    
-    if [ "${TOOLCHAIN:0:3}" = "gcc" ] ; then
-        export IS_GCC="True"
-        export IS_LLVM="False"
-        export CC_MAJOR_VERSION="$(echo ${TOOLCHAIN:4} | awk -F. '{ print $1 }')"
-        export GCC_TOOLCHAIN="$TOOLCHAIN"
-        export TOOLCHAIN_VERSION="$(echo ${TOOLCHAIN:4} | awk -F. '{ print $1 }')"
-        export CXXSTD="c++23"
-    else
-        export IS_GCC="False"
-        export IS_LLVM="True"
-        export CC_MAJOR_VERSION="$(echo ${TOOLCHAIN:6} | awk -F. '{ print $1 }')"
-        export LLVM_TOOLCHAIN="$TOOLCHAIN"
-        export TOOLCHAIN_VERSION="$(echo ${TOOLCHAIN:6} | awk -F. '{ print $1 }')"
-        export CXXSTD="c++2b"
-    fi
+
+    source "$(dirname "$0")/toolchain-env.sh"   \
+        --gcc-suffix="-${GCC_MAJOR_VERSION}" \
+        --gcc-installation="$GCC_DIR"        \
+        --clang-installation="$LLVM_DIR"     \
+        --stdlib="$STDLIB"                   \
+        --toolchain="$([ "${TOOLCHAIN:0:3}" = "gcc" ] && echo "gcc" || echo "clang")"
     
     export TRIPLE_LIST="$(uname -m)-linux-gnu $(uname -m)-pc-linux-gnu $(uname -m)-unknown-linux-gnu"
-    
-    if [ "$IS_OSX" = "True" ] ; then
-        echo "Unimplemented" 1>&2 && exit 1
-        # if [ "$(uname -m)" = "arm64" ] ; then
-        #     export ARCH="aarch64-apple-darwin$(uname -r | awk -F. '{print $1}')"
-        # elif [ "$(uname -m)" = "x86_64" ] ; then
-        #     export ARCH="x86_64-apple-darwin$(uname -r | awk -F. '{print $1}')"
-        # else
-        #     echo "unsupported arch $(uname -m), aborting" 1>&2 && exit 1
-        # fi
-    fi
-
-    export TOOLCHAIN_ROOT="$TOOLCHAINS_DIR/$TOOLCHAIN"
-   
-    if [ "$IS_GCC" = "True" ] ; then
-        export TOOLCHAIN_NAME="gcc"
-        export CC="$TOOLCHAIN_ROOT/bin/gcc-$CC_MAJOR_VERSION"
-        export CXX="$TOOLCHAIN_ROOT/bin/g++-$CC_MAJOR_VERSION"
-        export AR="$TOOLCHAIN_ROOT/bin/gcc-ar-$CC_MAJOR_VERSION"
-        export NM="$TOOLCHAIN_ROOT/bin/gcc-nm-$CC_MAJOR_VERSION"
-        export RANLIB="$TOOLCHAIN_ROOT/bin/gcc-ranlib-$CC_MAJOR_VERSION"
-        export GCOV="$TOOLCHAIN_ROOT/bin/gcov-$CC_MAJOR_VERSION"
-        export LLD="$LLVM_DIR/bin/ld.lld"
- 
-    elif [ "$IS_LLVM" = "True" ] ; then
-        export TOOLCHAIN_NAME="clang"
-        export CC="$TOOLCHAIN_ROOT/bin/clang"
-        export CXX="$TOOLCHAIN_ROOT/bin/clang++"
-        export AR="$TOOLCHAIN_ROOT/bin/llvm-ar"
-        export NM="$TOOLCHAIN_ROOT/bin/llvm-nm"
-        export RANLIB="$TOOLCHAIN_ROOT/bin/llvm-ranlib"
-        export GCOV="$GCC_DIR/bin/gcov-$(major_version $GCC_TOOLCHAIN)"
-        export LLD="$TOOLCHAIN_ROOT/bin/ld.lld"
-
-    else
-        echo "logic error" 1>&2 && exit 1
-    fi
-
     export TRIPLE="$(echo "$TRIPLE_LIST" | awk '{ print $1 }')"
     export PREFIX="$ARCH_DIR/${TRIPLE}_${TOOLCHAIN}_${STDLIB}"
     export PKG_CONFIG_PATH="$PREFIX/lib/pkgconfig"
 
     export CFLAGS="-fPIC -O3 -isystem$PREFIX/include"
-    export CXXFLAGS="-fPIC -O3 -isystem$PREFIX/include"
+    export CXXFLAGS="-fPIC -O3 -isystem$PREFIX/include $CXXLIB_FLAGS"
     [ "$IS_LLVM" = "True" ] && LDFLAGS="-fuse-ld=lld " || LD_FLAGS=""
     LDFLAGS+="-L$PREFIX/lib -Wl,-rpath,$PREFIX/lib"
-    export LDFLAGS="$LDFLAGS"
+    export LDFLAGS="$CXXLIB_LDFLAGS $LDFLAGS $CXXLIB_LIBS"
     export LIBS="-lm -pthreads"   
     
     export STDLIB="$STDLIB"
-    if [ "$STDLIB" = "stdcxx" ] ; then
-        ensure_toolchain_is_valid "$GCC_TOOLCHAIN"        
-        setup_stdcxx "$GCC_TOOLCHAIN" "$TRIPLE_LIST"
-    else
-        ensure_toolchain_is_valid "$LLVM_TOOLCHAIN"        
-        setup_libcxx "$LLVM_TOOLCHAIN" "$TRIPLE_LIST"
-    fi
-
-    LIBRARY_SEARCH_PATHS="$($CXX -print-search-dirs | grep -E '^libraries' | sed 's,^libraries: =,,' | tr ':' '\n' | sed 's,/$,,')"
     
     [ ! -x "$CC" ] && echo "Failed to find CC=$CC" 1>&2 && exit 1 || true
     [ ! -x "$CXX" ] && echo "Failed to find CXX=$CXX" 1>&2 && exit 1 || true
     [ ! -x "$AR" ] && echo "Failed to find AR=$AR" 1>&2 && exit 1 || true
     [ ! -x "$NM" ] && echo "Failed to find NM=$NM" 1>&2 && exit 1 || true
     [ ! -x "$RANLIB" ] && echo "Failed to find RANLIB=$RANLIB" 1>&2 && exit 1 || true
+
+    export CC="$CC"
+    export CXX="$CXX"
+    export AR="$AR"
+    export NM="$NM"
+    export RANLIB="$RANLIB"
+    export LLD="$LLD"
+    export GCOV="$GCOV"
+    export TOOLCHAIN_VERSION="$MAJOR_VERSION"
 }
 
 print_env()
 {
     cat <<EOF
 
-    IS_UBUNTU:       $IS_UBUNTU
-    IS_FEDORA:       $IS_FEDORA
-    IS_OSX:          $IS_OSX
+    OS:                $OPERATING_SYSTEM
+    GCC_VERSION:       $GCC_VERSION
+    LLVM_VERSION:      $LLVM_VERSION
+    STDLIB:            $STDLIB
+    TRIPLE:            $TRIPLE
+    TOOLCHAIN_VERSION: $TOOLCHAIN_VERSION
 
-    GCC_VERSION:     $GCC_VERSION
-    LLVM_VERSION:    $LLVM_VERSION
-    STDLIB:          $STDLIB
-    TRIPLE:          $TRIPLE
+    PREFIX:            $PREFIX
+    PKG_CONFIG_PATH:   $PKG_CONFIG_PATH
 
-    PREFIX:          $PREFIX
-    PKG_CONFIG_PATH: $PKG_CONFIG_PATH
+    HOST_CC            $HOST_CC
+    HOST_CXX           $HOST_CXX
 
-    CC:              $CC
-    CXX:             $CXX
-    AR:              $AR
-    NM:              $NM
-    RANLIB:          $RANLIB
-    GCOV:            $GCOV
-    LLD:             $LLD
+    CC:                $CC
+    CXX:               $CXX
+    AR:                $AR
+    NM:                $NM
+    RANLIB:            $RANLIB
+    GCOV:              $GCOV
+    LLD:               $LLD
 
-    CXXSTD           $CXXSTD
-    CFLAGS:          $CFLAGS
-    CXXFLAGS:        $CXXFLAGS
+    CXXSTD             $CXXSTD
+    CFLAGS:            $CFLAGS
+    CXXFLAGS:          $CXXFLAGS
 
-    LDFLAGS:         $LDFLAGS
-    LIBS:            $LIBS
+    LDFLAGS:           $LDFLAGS
+    LIBS:              $LIBS
 
     AVAILABLE TOOLCHAINS:      
 $(list_toolchains | sed 's,^,        ,')

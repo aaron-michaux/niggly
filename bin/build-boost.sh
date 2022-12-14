@@ -69,7 +69,8 @@ build()
     fi
     cp tools/build/example/user-config.jam "$HOME"
 
-    TOOL="$([ "$IS_GCC" = "True" ] && echo "gcc" || echo "clang")"
+    CC_VAR="$(basename "$CC")"
+    TOOL="$([ "${CC_VAR:0:3}" = "gcc" ] && echo "gcc" || echo "clang")"
     TOOLSET="${TOOL}-${TOOLCHAIN_VERSION}"
     
     cat >> $HOME/user-config.jam <<EOF
@@ -86,10 +87,10 @@ EOF
 
     rm -f b2
     rm -rf "bin.v2" "stage"
-    ./bootstrap.sh --prefix=$PREFIX
-    ./b2 --clean
-    ./b2 -j $(nproc) toolset="$TOOLSET" cxxstd=${CXXSTD:3} $LIBRARIES
-    ./b2 install toolset="$TOOLSET" cxxstd=${CXXSTD:3} $LIBRARIES
+    nice ./bootstrap.sh --prefix=$PREFIX
+    nice ./b2 --clean
+    nice ./b2 -j $(nproc) toolset="$TOOLSET" cxxstd=${CXXSTD:3} $LIBRARIES
+    nice ./b2 install toolset="$TOOLSET" cxxstd=${CXXSTD:3} $LIBRARIES
 }
 
 # ------------------------------------------------------------------------ parse

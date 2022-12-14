@@ -39,9 +39,9 @@ build_cmake()
     cat "$VERSION.tar.gz" | gzip -dc | tar -xf -
 
     cd "CMake-${VERSION:1}"
-    ./configure --prefix="$TOOLS_DIR"
+    nice ./configure --prefix="$TOOLS_DIR"
     nice make -j$(nproc)
-    make install
+    nice make install
 }
 
 # ------------------------------------------------------------------------ parse

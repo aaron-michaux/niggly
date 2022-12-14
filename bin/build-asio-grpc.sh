@@ -54,8 +54,8 @@ build()
            -D CMAKE_INSTALL_PREFIX=$PREFIX            \
            ..
  
-    make -j$(nproc)
-    make install
+    nice make -j$(nproc)
+    nice make install
 }
 
 # ------------------------------------------------------------------------ parse

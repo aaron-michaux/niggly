@@ -60,8 +60,8 @@ build_doxygen()
            -D CMAKE_INSTALL_PREFIX:PATH=$TOOLS_DIR \
            ..
 
-    make -j
-    make install
+    nice make -j$(nproc)
+    nice make install
 }
 
 
