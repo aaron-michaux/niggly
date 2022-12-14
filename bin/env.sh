@@ -4,21 +4,24 @@ export TOOLS_DIR=/opt/tools
 export TOOLCHAINS_DIR=/opt/toolchains
 export ARCH_DIR=/opt/arch
 
+# The default clang/gcc with the default cxxstd
+export DEFAULT_LLVM_VERSION="clang-15.0.6"
+export DEFAULT_GCC_VERSION="gcc-12.2.0"
+export GCC_CXXSTD=c++23
+export LLVM_CXXSTD=c++2a
+
 # Tool (host) compilers
 export HOST_CC=/usr/bin/gcc
 export HOST_CXX=/usr/bin/g++
 export LINKER=/usr/bin/ld
 
-export PYTHON_VERSION="$(python3 --version | awk '{print $2}' | sed 's,.[0-9]$,,')"
+export PYTHON_FULL_VERSION=$(python3 --version)
+export PYTHON_VERSION="3.$(echo "$PYTHON_FULL_VERSION" | awk -F. '{ print $2 }')"
 
 export CLEANUP="True"
 
 # These dependencies need to be made, and are then used globally
 export CMAKE="$TOOLS_DIR/bin/cmake"
-export DEFAULT_LLVM_VERSION="clang-15.0.6"
-export DEFAULT_GCC_VERSION="gcc-12.2.0"
-
-export CXXSTD=c++23
 
 # --------------------------------------------------------------------- Platform
 export IS_UBUNTU=$([ -x /usr/bin/lsb_release ] && lsb_release -a 2>/dev/null | grep -q Ubuntu && echo "True" || echo "False")
@@ -146,13 +149,16 @@ crosstool_setup()
     fi
     ensure_toolchain_is_valid "$TOOLCHAIN"
 
+    if [ "${TOOLCHAIN:0:3}" = "gcc" ] ; then
+        export CXXSTD="$GCC_CXXSTD"
+    else
+        export CXXSTD="$LLVM_CXXSTD"
+    fi
+    
     GCC_MAJOR_VERSION="$(echo ${GCC_TOOLCHAIN:4} | awk -F. '{ print $1 }')"
 
     export GCC_DIR="$TOOLCHAINS_DIR/$GCC_TOOLCHAIN"
     export LLVM_DIR="$TOOLCHAINS_DIR/$LLVM_TOOLCHAIN"
-
-    export PYTHON_FULL_VERSION=$(python3 --version)
-    export PYTHON_VERSION="3.$(echo "$PYTHON_FULL_VERSION" | awk -F. '{ print $2 }')"
 
     source "$(dirname "$0")/toolchain-env.sh"   \
         --gcc-suffix="-${GCC_MAJOR_VERSION}" \
@@ -180,7 +186,7 @@ crosstool_setup()
     [ ! -x "$AR" ] && echo "Failed to find AR=$AR" 1>&2 && exit 1 || true
     [ ! -x "$NM" ] && echo "Failed to find NM=$NM" 1>&2 && exit 1 || true
     [ ! -x "$RANLIB" ] && echo "Failed to find RANLIB=$RANLIB" 1>&2 && exit 1 || true
-
+    
     export CC="$CC"
     export CXX="$CXX"
     export AR="$AR"
