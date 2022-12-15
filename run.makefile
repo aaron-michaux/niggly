@@ -36,7 +36,7 @@ ifeq ("$(BUILD_TESTS)", "True")
   BASE_SOURCES:=$(SOURCES)
   SOURCES=$(filter-out src/main.cpp,$(BASE_SOURCES)) $(shell find testcases -type f -name '*.cpp' -o -name '*.cc' -o -name '*.c')  
   CPPFLAGS+=-DTEST_BUILD -DCATCH_BUILD -DCATCH_CONFIG_PREFIX_ALL -DCATCH_CONFIG_COLOUR_ANSI
-  LIBS+=-lCatch2
+  LIBS+=-lCatch2Main -lCatch2
 endif
 
 ifeq ("$(BUILD_EXAMPLES)", "True")
