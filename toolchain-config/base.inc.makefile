@@ -113,7 +113,7 @@ CXXFLAGS_F:=$(CXXSTD) $(CXXFLAGS_3) $(CXXFLAGS) $(CPPFLAGS)
 LDFLAGS_F:=$(LDFLAGS_3) $(LIBS) $(CXXLIB_LDFLAGS) $(CXXLIB_LIBS)
 
 # Visual feedback rules
-ifneq ($(VERBOSE), "False")
+ifeq ($(VERBOSE), "True")
   ISVERBOSE:=verbose
   BANNER:=$(shell printf "\# \e[1;37m-- ~ \e[1;37m\e[4m")
   BANEND:=$(shell printf "\e[0m\e[1;37m ~ --\e[0m")

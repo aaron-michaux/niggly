@@ -174,14 +174,16 @@ if [ "$TARGET_OVERRIDE" = "" ] ; then
         export MallocNanoZone=0
     fi
     PRODUCT="$(make -f "$MAKEFILE" info | grep -E ^PRODUCT | awk '{ print $2 }')"
-
+    source "$INSTALLATION_DIR/bin/env.sh"
+    VALGRIND_EXE="$TOOLS_DIR/bin/valgrind"
+    
     RET=0    
     if [ "$VALGRIND" = "True" ] ; then        
-        valgrind --demangle=yes --tool=memcheck --leak-check=full --track-origins=yes --verbose --log-file=valgrind.log --gen-suppressions=all --suppressions=$SUPP_DIR/valgrind.supp "$PRODUCT" "$@"
+        $VALGRIND_EXE --demangle=yes --tool=memcheck --leak-check=full --track-origins=yes --verbose --log-file=valgrind.log --gen-suppressions=all --suppressions=$SUPP_DIR/valgrind.supp "$PRODUCT" "$@"
         RET=$?
         cat valgrind.log | tail -n 1
     elif [ "$HELGRIND" = "True" ] ; then        
-        valgrind --demangle=yes --tool=helgrind --verbose --log-file=helgrind.log --gen-suppressions=all --suppressions=$SUPP_DIR/helgrind.supp "$PRODUCT" "$@"
+        $VALGRIND_EXE --demangle=yes --tool=helgrind --verbose --log-file=helgrind.log --gen-suppressions=all --suppressions=$SUPP_DIR/helgrind.supp "$PRODUCT" "$@"
         RET=$?
         cat helgrind.log | tail -n 1
     elif [ "$GDB" = "True" ] && (( $# != 0 )) ; then        
