@@ -1,0 +1,7 @@
+
+#pragma once
+
+#ifndef PROJECT__CONFIG_INC_INCLUDE_GUARD_HPP
+#define PROJECT__CONFIG_INC_INCLUDE_GUARD_HPP
+
+#endif

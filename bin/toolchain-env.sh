@@ -95,7 +95,7 @@ test_in()
 
 test_in --toolchain $TOOL "gcc clang"
 test_in --stdlib $STDLIB "libcxx stdcxx"
-test_in --build-config $BUILD_CONFIG "'' debug release asan usan tsan"
+test_in --build-config $BUILD_CONFIG "'' debug release asan usan tsan reldbg"
 test_in --lto $LTO "True False"
 test_in --coverage $COVERAGE "True False"
 test_in --unity $UNITY "True False"
@@ -129,26 +129,15 @@ find_gcov()
 
 # ----------------------------------------------------------------------- Base Environment Varialbes
 
-# --Host Platform Variables
-OPERATING_SYSTEM="unknown"
-if [ -x /usr/bin/lsb_release ] && lsb_release -a 2>/dev/null | grep -q Ubuntu ; then
-    OPERATING_SYSTEM="ubuntu"
-elif [ -f /etc/fedora-release ] ; then
-    OPERATING_SYSTEM="fedora"
-elif [ "$(uname -s)" = "Darwin" ] ; then
-    OPERATING_SYSTEM="macos"
+GCC_CONFIG="$(basename "$GCC_INSTALLATION")"
+CLANG_CONFIG="$(basename "$CLANG_INSTALLATION")"
+
+if [ "$GCC_SUFFIX" = "" ] && [ -d "$GCC_INSTALLATION" ] ; then
+    MAJOR_VERSION="$(find "$GCC_INSTALLATION/bin" -type f -name 'gcc*' | awk -F- '{ print $NF }' | sort | uniq | head -n 1)"
+    if [ "$MAJOR_VERSION" != "" ] ; then
+        GCC_SUFFIX="-$MAJOR_VERSION"
+    fi
 fi
-
-# -- The Build Directory
-UNIQUE_DIR="${TOOL}-${CONFIG}"
-[ "$BUILD_TESTS" = "True" ] && UNIQUE_DIR="test-${UNIQUE_DIR}"
-[ "$LTO" = "True" ]         && UNIQUE_DIR="${UNIQUE_DIR}-lto"
-[ "$BENCHMARK" = "True" ]   && UNIQUE_DIR="bench-${UNIQUE_DIR}"
-[ "$COVERAGE" = "True" ] || [ "$COVERAGE_HTML" = "True" ] && UNIQUE_DIR="coverage-${UNIQUE_DIR}"
-BUILDDIR="/tmp/build-${USER}/${UNIQUE_DIR}/${TARGET_FILE}"
-
-# -- Make-env.inc file
-MAKE_ENV_INC_FILE=$BUILDDIR/make-env.inc
 
 # ------------------------------------------------------------------------------------ Find Binaries
 
@@ -159,8 +148,6 @@ if [ "$TOOL" = "gcc" ] ; then
     AR="$GCC_INSTALLATION/bin/gcc-ar${GCC_SUFFIX}"
     NM="$GCC_INSTALLATION/bin/gcc-nm${GCC_SUFFIX}"
     RANLIB="$GCC_INSTALLATION/bin/gcc-ranlib${GCC_SUFFIX}"
-    GCOV="$GCC_INSTALLATION/bin/gcov${GCC_SUFFIX}"
-    LLD="$CLANG_INSTALLATION/bin/ld.lld"    
 else
     TOOLCHAIN_ROOT="$CLANG_INSTALLATION"
     CC="$CLANG_INSTALLATION/bin/clang"
@@ -168,9 +155,12 @@ else
     AR="$CLANG_INSTALLATION/bin/llvm-ar"
     NM="$CLANG_INSTALLATION/bin/llvm-nm"
     RANLIB="$CLANG_INSTALLATION/bin/llvm-ranlib"
-    GCOV="$GCC_INSTALLATION/bin/gcov${GCC_SUFFIX}"
-    LLD="$CLANG_INSTALLATION/bin/ld.lld"
 fi
+
+GCOV="$GCC_INSTALLATION/bin/gcov${GCC_SUFFIX}"
+LLD="$CLANG_INSTALLATION/bin/ld.lld"
+LLVM_COV="$CLANG_INSTALLATION/bin/llvm-cov"
+LLVM_PROFDATA="$CLANG_INSTALLATION/bin/llvm-profdata"
 
 [ ! -x "$CC" ] && echo "Failed to find CC=$CC" 1>&2 && exit 1 || true
 [ ! -x "$CXX" ] && echo "Failed to find CXX=$CXX" 1>&2 && exit 1 || true
@@ -185,9 +175,12 @@ else
     MAJOR_VERSION="$($CC --version | head -n 1 | awk '{ print $3 }' | awk -F. '{ print $1 }')"
 fi
 
+
 # "Unset" these variables if the files were not found
 [ ! -f "$LLD" ]  && LLD=""  || true
 [ ! -f "$GCOV" ] && GCOV="" || true
+[ ! -f "$LLVM_COV" ] && LLVM_COV="" || true
+[ ! -f "$LLVM_PROFDATA" ] && LLVM_PROFDATA="" || true
 
 TRIPLE_LIST="$(uname -m)-linux-gnu $(uname -m)-pc-linux-gnu $(uname -m)-unknown-linux-gnu"
 
@@ -228,7 +221,8 @@ elif [ "$STDLIB" = "stdcxx" ] && [ "$GCC_INSTALLATION" != "" ] ; then
         echo "Failed to find $GCC_INSTALLATION/lib/gcc/[$TRIPLE_LIST]/$CC_MAJOR_VERSION directory" 1>&2 && exit 1
     fi    
 
-    CXXLIB_FLAGS="-nostdinc++ -isystem$CPP_DIR -isystem$CPP_INC_TRIPLE_DIR"
+    [ "$TOOL" = "gcc" ] && CXXLIB_FLAGS="" || CXXLIB_FLAGS="-nostdinc++"
+    CXXLIB_FLAGS+="-isystem$CPP_DIR -isystem$CPP_INC_TRIPLE_DIR"
     CXXLIB_LDFLAGS=""
     CXXLIB_LIBS="-L$GCC_INSTALLATION/lib64 -Wl,-rpath,$GCC_INSTALLATION/lib64 -L$CPP_LIB_TRIPLE_DIR -Wl,-rpath,$CPP_LIB_TRIPLE_DIR -lstdc++"
 
@@ -266,6 +260,17 @@ elif [ "$STDLIB" = "libcxx" ] && [ "$CLANG_INSTALLATION" != "" ] ; then
     fi    
 fi
 
+# -- The Build Directory
+UNIQUE_DIR="$(basename "$TOOLCHAIN_ROOT")-${BUILD_CONFIG}"
+[ "$BUILD_TESTS" = "True" ] && UNIQUE_DIR="test-${UNIQUE_DIR}"
+[ "$LTO" = "True" ]         && UNIQUE_DIR="${UNIQUE_DIR}-lto"
+[ "$BENCHMARK" = "True" ]   && UNIQUE_DIR="bench-${UNIQUE_DIR}"
+[ "$COVERAGE" = "True" ] || [ "$COVERAGE_HTML" = "True" ] && UNIQUE_DIR="coverage-${UNIQUE_DIR}"
+BUILD_DIR="/tmp/build-${USER}/${UNIQUE_DIR}/${TARGET}"
+
+# -- Make-env.inc file
+MAKE_ENV_INC_FILE=$BUILD_DIR/make-env.inc
+
 # -------------------------------------------------------------------------------------- End Actions
 
 print_variables()
@@ -273,19 +278,22 @@ print_variables()
     cat <<EOF
 # Directories
 export OPERATING_SYSTEM=$OPERATING_SYSTEM
+export OS_VERSION=$OS_VERSION
 export TRIPLE_LIST="$TRIPLE_LIST"
-export PKG_CONFIG_PATH=$PKG_CONFIG_PATH
 export TOOLCHAIN_ROOT=$TOOLCHAIN_ROOT
 export GCC_INSTALLATION=$GCC_INSTALLATION
 export CLANG_INSTALLATION=$CLANG_INSTALLATION
-export PREFIX=$PREFIX
-export BUILDDIR=$BUILDDIR
+export INSTALL_PREFIX=$ARCH_DIR/$(echo "$TRIPLE_LIST" | awk '{ print $1 }')_$(basename "$TOOLCHAIN_ROOT")_$STDLIB
+export UNIQUE_DIR=$UNIQUE_DIR
+export BUILD_DIR=$BUILD_DIR
 
 # Important files
 export MAKE_ENV_INC_FILE=$MAKE_ENV_INC_FILE
 
 # Compiler information
+export STDLIB=$STDLIB
 export TOOL=$TOOL
+export TOOLCHAIN=$(basename "$TOOLCHAIN_ROOT")
 export MAJOR_VERSION=$MAJOR_VERSION
 
 # Binaries
@@ -296,18 +304,20 @@ export NM=$NM
 export RANLIB=$RANLIB
 export GCOV=$GCOV
 export LLD=$LLD
+export LLVM_COV=$LLVM_COV
+export LLVM_PROFDATA=$LLVM_PROFDATA
 
 # build variables
-export CXXLIB_FLAGS="$CXXLIB_FLAGS"
-export CXXLIB_LDFLAGS="$CXXLIB_LDFLAGS"
-export CXXLIB_LIBS="$CXXLIB_LIBS"
+export CXXLIB_FLAGS=$CXXLIB_FLAGS
+export CXXLIB_LDFLAGS=$CXXLIB_LDFLAGS
+export CXXLIB_LIBS=$CXXLIB_LIBS
 
 EOF
 }
 
 [ "$PRINT" = "True" ] && print_variables || true
 if [ "$WRITE_MAKE_ENV_INC" = "True" ] ; then
-    mkdir -p "$BUILDDIR"
+    mkdir -p "$BUILD_DIR"
     print_variables | sed 's,=,:=,' | sed 's,^export ,,' > $MAKE_ENV_INC_FILE
 fi
 

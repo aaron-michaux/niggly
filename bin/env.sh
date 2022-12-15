@@ -23,10 +23,23 @@ export CLEANUP="True"
 # These dependencies need to be made, and are then used globally
 export CMAKE="$TOOLS_DIR/bin/cmake"
 
+export TRIPLE_LIST="$(uname -m)-linux-gnu $(uname -m)-pc-linux-gnu $(uname -m)-unknown-linux-gnu"
+
 # --------------------------------------------------------------------- Platform
-export IS_UBUNTU=$([ -x /usr/bin/lsb_release ] && lsb_release -a 2>/dev/null | grep -q Ubuntu && echo "True" || echo "False")
-export IS_FEDORA=$([ -f /etc/fedora-release ] && echo "True" || echo "False")
-export IS_OSX=$([ "$(uname -s)" = "Darwin" ] && echo "True" || echo "False")
+# --Host Platform Variables
+export OPERATING_SYSTEM="unknown"
+export OS_VERSION="unknown"
+if [ -x /usr/bin/lsb_release ] && lsb_release -a 2>/dev/null | grep -q Ubuntu ; then
+    export OPERATING_SYSTEM="ubuntu"
+    export OS_VERSION="$(/usr/bin/lsb_release -a 2>/dev/null | grep -E ^Release | awk '{ print $2 }')"
+elif [ -f /etc/fedora-release ] ; then
+    export OPERATING_SYSTEM="fedora"
+elif [ "$(uname -s)" = "Darwin" ] ; then
+    export OPERATING_SYSTEM="macos"
+fi
+
+ 
+
 
 show_help_snippet()
 {
@@ -96,7 +109,7 @@ install_dependences()
 {
     # If compiling for a different platforms, we'd augment this files with
     # brew commands (macos), yum (fedora) etc.
-    if [ "$IS_UBUNTU" = "True" ] ; then
+    if [ "$OPERATING_SYSTEM" = "ubuntu" ] ; then
         export DEBIAN_FRONTEND=noninteractive
         sudo apt-get install -y -qq \
              wget subversion automake swig python2.7-dev libedit-dev libncurses5-dev  \
@@ -104,8 +117,9 @@ install_dependences()
              libparted-dev flex sphinx-doc guile-2.2 gperf gettext expect tcl dejagnu \
              libgmp-dev libmpfr-dev libmpc-dev patchelf liblz-dev pax-utils 
 
-    elif [ "$IS_OSX" = "True" ] ; then
-        which nproc 1>/dev/null || brew install coreutils
+    elif [ "$OPERATING_SYSTEM" = "macos" ] ; then
+        which nproc 1>/dev/null 2>/dev/null || brew install coreutils
+        which gsed  1>/dev/null 2>/dev/null || brew install gnu-sed
         
     fi
 }
@@ -167,7 +181,6 @@ crosstool_setup()
         --stdlib="$STDLIB"                   \
         --toolchain="$([ "${TOOLCHAIN:0:3}" = "gcc" ] && echo "gcc" || echo "clang")"
     
-    export TRIPLE_LIST="$(uname -m)-linux-gnu $(uname -m)-pc-linux-gnu $(uname -m)-unknown-linux-gnu"
     export TRIPLE="$(echo "$TRIPLE_LIST" | awk '{ print $1 }')"
     export PREFIX="$ARCH_DIR/${TRIPLE}_${TOOLCHAIN}_${STDLIB}"
     export PKG_CONFIG_PATH="$PREFIX/lib/pkgconfig"
