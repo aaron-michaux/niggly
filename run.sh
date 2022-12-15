@@ -103,6 +103,10 @@ while [ "$#" -gt "0" ] ; do
     [ "$1" = "valgrind" ]  && CONFIG="debug"     && VALGRIND="True" && shift && continue
     [ "$1" = "helgrind" ]  && CONFIG="debug"     && HELGRIND="True" && shift && continue
     [ "$1" = "gdb" ]       && CONFIG="debug"     && GDB="True" && shift && continue
+
+    # Stdlib
+    [ "$1" = "libcxx" ]    && STDLIB="libcxx"    && shift && continue
+    [ "$1" = "stdcxx" ]    && STDLIB="stdcxx"    && shift && continue
     
     # Other options
     [ "$1" = "clean" ]     && RULE="clean"          && shift && continue
@@ -174,6 +178,12 @@ if [ "$TARGET_OVERRIDE" = "" ] ; then
         export MallocNanoZone=0
     fi
     PRODUCT="$(make -f "$MAKEFILE" info | grep -E ^PRODUCT | awk '{ print $2 }')"
+
+    if [ ! -x "$PRODUCT" ] ; then
+        rm -f "$PRODUCT"
+        exit 1
+    fi
+    
     source "$INSTALLATION_DIR/bin/env.sh"
     VALGRIND_EXE="$TOOLS_DIR/bin/valgrind"
     

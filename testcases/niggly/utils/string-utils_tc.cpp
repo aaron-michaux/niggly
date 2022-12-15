@@ -15,12 +15,13 @@ CATCH_TEST_CASE("StrUtils", "[str-utils]") {
     {
       const auto parts = explode("one/two//three/", '/');
       CATCH_REQUIRE(parts.size() == 5);
-      CATCH_REQUIRE(parts[0] == "one");
-      CATCH_REQUIRE(parts[1] == "two");
-      CATCH_REQUIRE(parts[2] == "");
-      CATCH_REQUIRE(parts[3] == "three");
-      CATCH_REQUIRE(parts[4] == "");
+      CATCH_REQUIRE((parts[0] == "one"));
+      CATCH_REQUIRE((parts[1] == "two"));
+      CATCH_REQUIRE((parts[2] == ""));
+      CATCH_REQUIRE((parts[3] == "three"));
+      CATCH_REQUIRE((parts[4] == ""));
     }
   }
 }
+
 } // namespace niggly::tests

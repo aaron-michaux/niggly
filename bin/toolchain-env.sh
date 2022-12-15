@@ -221,7 +221,7 @@ elif [ "$STDLIB" = "stdcxx" ] && [ "$GCC_INSTALLATION" != "" ] ; then
         echo "Failed to find $GCC_INSTALLATION/lib/gcc/[$TRIPLE_LIST]/$CC_MAJOR_VERSION directory" 1>&2 && exit 1
     fi    
 
-    [ "$TOOL" = "gcc" ] && CXXLIB_FLAGS="" || CXXLIB_FLAGS="-nostdinc++"
+    [ "$TOOL" = "gcc" ] && CXXLIB_FLAGS="" || CXXLIB_FLAGS="-nostdinc++ "
     CXXLIB_FLAGS+="-isystem$CPP_DIR -isystem$CPP_INC_TRIPLE_DIR"
     CXXLIB_LDFLAGS=""
     CXXLIB_LIBS="-L$GCC_INSTALLATION/lib64 -Wl,-rpath,$GCC_INSTALLATION/lib64 -L$CPP_LIB_TRIPLE_DIR -Wl,-rpath,$CPP_LIB_TRIPLE_DIR -lstdc++"
@@ -261,7 +261,7 @@ elif [ "$STDLIB" = "libcxx" ] && [ "$CLANG_INSTALLATION" != "" ] ; then
 fi
 
 # -- The Build Directory
-UNIQUE_DIR="$(basename "$TOOLCHAIN_ROOT")-${BUILD_CONFIG}"
+UNIQUE_DIR="$(basename "$TOOLCHAIN_ROOT")-${STDLIB}-${BUILD_CONFIG}"
 [ "$BUILD_TESTS" = "True" ] && UNIQUE_DIR="test-${UNIQUE_DIR}"
 [ "$LTO" = "True" ]         && UNIQUE_DIR="${UNIQUE_DIR}-lto"
 [ "$BENCHMARK" = "True" ]   && UNIQUE_DIR="bench-${UNIQUE_DIR}"

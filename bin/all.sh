@@ -82,6 +82,11 @@ install_library()
     local SKIP="$2"
     for TOOLCHAIN in "gcc" "llvm" ; do
         for STDLIB in "--libcxx" "--stdcxx" ; do
+            if [ "$TOOLCHAIN" = "gcc" ] && [ "STDLIB" = "--libcxx" ] ; then
+                # echo, let's not go there =)
+                continue
+            fi
+            
             if [ "$SKIP" = "${TOOLCHAIN}${STDLIB}" ] ; then
                 echo "Skipping $SCRIPT for $SKIP, this combination does not build"
             else
@@ -96,7 +101,7 @@ install_library()
     done            
 }
 
-install_library  build-google-benchmark.sh   "gcc--libcxx"
+install_library  build-google-benchmark.sh  
 install_library  build-google-test.sh       
 install_library  build-catch.sh             
 install_library  build-ctre.sh              
@@ -110,8 +115,8 @@ install_library  build-boost.sh
 install_library  build-ranges-ts.sh         
 install_library  build-liburing.sh         
 install_library  build-unifex.sh         
-install_library  build-grpc.sh               "gcc--libcxx"
-install_library  build-asio-grpc.sh          "gcc--libcxx"
+install_library  build-grpc.sh            
+install_library  build-asio-grpc.sh         
 
 if [ "$EXIT_CODE" != "0" ] ; then
     echo "Exit-Code = $EXIT_CODE, the following failed to build:"

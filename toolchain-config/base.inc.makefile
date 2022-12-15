@@ -31,6 +31,8 @@ ifeq (, $(shell test -f "$(TOOLCHAIN_ENV_INC_FILE)" && echo "found"))
    $(error "Error: failed to find toolchain inc file: '$(TOOLCHAIN_ENV_INC_FILE)'")
 endif
 
+include $(TOOLCHAIN_ENV_INC_FILE)
+
 # -------------------------------------------------------------------------------------------- Logic
 
 # This is the "toolchain" file to be included
@@ -109,11 +111,11 @@ endif
 
 # Final flags
 CFLAGS_F:=$(CFLAGS_3) $(CFLAGS) $(CPPFLAGS)
-CXXFLAGS_F:=$(CXXSTD) $(CXXFLAGS_3) $(CXXFLAGS) $(CPPFLAGS)
+CXXFLAGS_F:=$(CXXSTD) $(CXXFLAGS) $(CPPFLAGS) $(CXXFLAGS_3) 
 LDFLAGS_F:=$(LDFLAGS_3) $(LIBS) $(CXXLIB_LDFLAGS) $(CXXLIB_LIBS)
 
 # Visual feedback rules
-ifeq ($(VERBOSE), "True")
+ifeq ("$(VERBOSE)", "True")
   ISVERBOSE:=verbose
   BANNER:=$(shell printf "\# \e[1;37m-- ~ \e[1;37m\e[4m")
   BANEND:=$(shell printf "\e[0m\e[1;37m ~ --\e[0m")
@@ -184,7 +186,7 @@ coverage_html: $(TARGET_DIR)/$(TARGET)
 	$(TARGET_DIR)/$(TARGET)
 	@echo "running lcov to generate coverage"
 	lcov --gcov-tool $(GCOV) -c --directory $(BUILD_DIR) --output-file $(TARGET_DIR)/app_info.info
-	genhtml $(TARGET_DIR)/app_info.info --output-directory doc/html/coverage
+	genhtml $(TARGET_DIR)/app_info.info --output-directory build/html/coverage
 
 llvm_coverage_html: $(TARGETDIR)/$(TARGET)
 	@echo "running target"
@@ -193,7 +195,7 @@ llvm_coverage_html: $(TARGETDIR)/$(TARGET)
 	$(LLVM_PROFDATA) merge -o default.prof default.profraw
 	$(LLVM_COV) export -format lcov -instr-profile default.prof $(TARGETDIR)/$(TARGET) > $(TARGETDIR)/app_info.info
 	rm -f default.profraw default.prof
-	genhtml $(TARGETDIR)/app_info.info --output-directory doc/html/coverage
+	genhtml $(TARGETDIR)/app_info.info --output-directory build/html/coverage
 
 $(COMP_DATABASE): $(COMPDBS)
 	@echo '$(BANNER)c++-system-header $<$(BANEND)'

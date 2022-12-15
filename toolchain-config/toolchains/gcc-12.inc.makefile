@@ -24,15 +24,15 @@ LTO_LINK:=-fuse-linker-plugin -flto
 
 # asan
 ASAN_FLAGS:=-g3 -gdwarf-2 -DADDRESS_SANITIZE -fsanitize=address
-ASAN_LINK:=-Wl,-rpath,$(CPPLIB_DIR) -fsanitize=address
+ASAN_LINK:=-fsanitize=address
 
 # usan
 USAN_FLAGS:=-g3 -gdwarf-2 -DUNDEFINED_SANITIZE -fsanitize=undefined
-USAN_LINK:=-Wl,-rpath,$(CPPLIB_DIR) -fsanitize=undefined
+USAN_LINK:=-fsanitize=undefined
 
 # tsan
 TSAN_FLAGS:=-g3 -gdwarf-2 -DTHREAD_SANITIZE -fsanitize=thread -fPIE
-TSAN_LINK:=-Wl,-rpath,$(CPPLIB_DIR) -fsanitize=thread -fPIE
+TSAN_LINK:=-fsanitize=thread -fPIE
 
 # Coverage
 COVERAGE_FLAGS:=--coverage -fno-elide-constructors -fno-default-inline -fno-inline
