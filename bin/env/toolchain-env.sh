@@ -2,6 +2,9 @@
 
 set -e
 
+# Load the defaults
+source "$(dirname "$BASH_SOURCE")/platform-env.sh"
+
 show_help()
 {
     cat <<EOF
@@ -28,9 +31,6 @@ show_help()
 
 EOF
 }
-
-# Load the defaults
-source "$(dirname "$0")/env.sh"
 
 # -------------------------------------------------------------------------------------------- parse
 
@@ -116,16 +116,6 @@ if [ "$TARGET" = "" ] && [ "$WRITE_MAKE_ENV_INC" = "True" ] ; then
 fi
 
 [ "$HAS_ERROR" = "True" ] && exit 1 || true
-
-# --------------------------------------------------------------------------------- Useful Functions
-
-find_gcov()
-{
-    local GCC_INSTALLATION="$1"
-    if [ -d "$GCC_INSTALLATION" ] ; then
-        find "$GCC_INSTALLATION" -maxdepth 1 -name 'gcov*' -type f -o -name 'gcov*' -type l | grep -v gcovr | grep -v gcov-dump | grep -v gcov-tool | sort -g -k 2 -t - | tail -n 1
-    fi
-}
 
 # ----------------------------------------------------------------------- Base Environment Varialbes
 
@@ -277,8 +267,7 @@ print_variables()
 {
     cat <<EOF
 # Directories
-export OPERATING_SYSTEM=$OPERATING_SYSTEM
-export OS_VERSION=$OS_VERSION
+export PLATFORM=$PLATFORM
 export TRIPLE_LIST="$TRIPLE_LIST"
 export TOOLCHAIN_ROOT=$TOOLCHAIN_ROOT
 export GCC_INSTALLATION=$GCC_INSTALLATION

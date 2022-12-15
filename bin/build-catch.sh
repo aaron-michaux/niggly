@@ -2,7 +2,7 @@
 
 set -e
 
-source "$(cd "$(dirname "$0")" ; pwd)/env.sh"
+source "$(cd "$(dirname "$0")" ; pwd)/env/cross-env.sh"
 
 show_help()
 {

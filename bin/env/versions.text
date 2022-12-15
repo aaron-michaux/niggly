@@ -1,6 +1,6 @@
 build-asio-grpc.sh         v2.3.0
 build-boost.sh             1.80.0
-build-catch.sh             v3.2.0
+build-catch.sh             v3.2.1
 build-cmake.sh             v3.25.1
 build-ctre.sh              v3.7.1
 build-doxygen.sh           1.9.5

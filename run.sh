@@ -184,7 +184,7 @@ if [ "$TARGET_OVERRIDE" = "" ] ; then
         exit 1
     fi
     
-    source "$INSTALLATION_DIR/bin/env.sh"
+    source "$INSTALLATION_DIR/bin/env/platform-env.sh"
     VALGRIND_EXE="$TOOLS_DIR/bin/valgrind"
     
     RET=0    

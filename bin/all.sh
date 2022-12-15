@@ -54,7 +54,7 @@ fi
 
 WORKING_DIR="$(cd "$(dirname "$0")" ; pwd)"
 cd "$WORKING_DIR"
-source "./env.sh"
+source "./env/platform-env.sh"
 
 # dependencies
 install_dependences

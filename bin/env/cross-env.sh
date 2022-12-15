@@ -1,45 +1,14 @@
 
 # ------------------------------------------------------ Host Platform Variables
-export TOOLS_DIR=/opt/tools
-export TOOLCHAINS_DIR=/opt/toolchains
-export ARCH_DIR=/opt/arch
 
-# The default clang/gcc with the default cxxstd
-export DEFAULT_LLVM_VERSION="clang-15.0.6"
-export DEFAULT_GCC_VERSION="gcc-12.2.0"
+source "$(dirname "$BASH_SOURCE")/platform-env.sh"
+
 export GCC_CXXSTD=c++23
 export LLVM_CXXSTD=c++2a
 
-# Tool (host) compilers
-export HOST_CC=/usr/bin/gcc
-export HOST_CXX=/usr/bin/g++
-export LINKER=/usr/bin/ld
-
-export PYTHON_FULL_VERSION=$(python3 --version)
-export PYTHON_VERSION="3.$(echo "$PYTHON_FULL_VERSION" | awk -F. '{ print $2 }')"
-
 export CLEANUP="True"
 
-# These dependencies need to be made, and are then used globally
-export CMAKE="$TOOLS_DIR/bin/cmake"
-
-export TRIPLE_LIST="$(uname -m)-linux-gnu $(uname -m)-pc-linux-gnu $(uname -m)-unknown-linux-gnu"
-
 # --------------------------------------------------------------------- Platform
-# --Host Platform Variables
-export OPERATING_SYSTEM="unknown"
-export OS_VERSION="unknown"
-if [ -x /usr/bin/lsb_release ] && lsb_release -a 2>/dev/null | grep -q Ubuntu ; then
-    export OPERATING_SYSTEM="ubuntu"
-    export OS_VERSION="$(/usr/bin/lsb_release -a 2>/dev/null | grep -E ^Release | awk '{ print $2 }')"
-elif [ -f /etc/fedora-release ] ; then
-    export OPERATING_SYSTEM="fedora"
-elif [ "$(uname -s)" = "Darwin" ] ; then
-    export OPERATING_SYSTEM="macos"
-fi
-
- 
-
 
 show_help_snippet()
 {
@@ -106,10 +75,10 @@ ensure_llvm_dir()
 }
 
 install_dependences()
-{
+{    
     # If compiling for a different platforms, we'd augment this files with
     # brew commands (macos), yum (fedora) etc.
-    if [ "$OPERATING_SYSTEM" = "ubuntu" ] ; then
+    if [ "$PLATFORM" = "ubuntu" ] ; then
         export DEBIAN_FRONTEND=noninteractive
         sudo apt-get install -y -qq \
              wget subversion automake swig python2.7-dev libedit-dev libncurses5-dev  \
@@ -117,7 +86,7 @@ install_dependences()
              libparted-dev flex sphinx-doc guile-2.2 gperf gettext expect tcl dejagnu \
              libgmp-dev libmpfr-dev libmpc-dev patchelf liblz-dev pax-utils 
 
-    elif [ "$OPERATING_SYSTEM" = "macos" ] ; then
+    elif [ "$PLATFORM" = "macos" ] ; then
         which nproc 1>/dev/null 2>/dev/null || brew install coreutils
         which gsed  1>/dev/null 2>/dev/null || brew install gnu-sed
         
@@ -174,7 +143,7 @@ crosstool_setup()
     export GCC_DIR="$TOOLCHAINS_DIR/$GCC_TOOLCHAIN"
     export LLVM_DIR="$TOOLCHAINS_DIR/$LLVM_TOOLCHAIN"
 
-    source "$(dirname "$0")/toolchain-env.sh"   \
+    source "$(dirname "$BASH_SOURCE")/toolchain-env.sh"   \
         --gcc-suffix="-${GCC_MAJOR_VERSION}" \
         --gcc-installation="$GCC_DIR"        \
         --clang-installation="$LLVM_DIR"     \
@@ -208,13 +177,16 @@ crosstool_setup()
     export LLD="$LLD"
     export GCOV="$GCOV"
     export TOOLCHAIN_VERSION="$MAJOR_VERSION"
+
+    export PYTHON_FULL_VERSION=$(python3 --version)
+    export PYTHON_VERSION="3.$(echo "$PYTHON_FULL_VERSION" | awk -F. '{ print $2 }')"
 }
 
 print_env()
 {
     cat <<EOF
 
-    OS:                $OPERATING_SYSTEM
+    PLATFORM:          $PLATFORM
     GCC_VERSION:       $GCC_VERSION
     LLVM_VERSION:      $LLVM_VERSION
     STDLIB:            $STDLIB
@@ -344,7 +316,7 @@ parse_basic_args()
     fi
 
     if [ "$VERSION" = "" ] ; then
-        VERSION_FILE="$(dirname "$0")/versions.text"
+        VERSION_FILE="$(dirname "$BASH_SOURCE")/versions.text"
         if [ ! -f "$VERSION_FILE" ] ; then
             echo "Failed to find versions file!" 1>&2 && exit 1
         fi

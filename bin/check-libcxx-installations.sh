@@ -15,7 +15,7 @@ EOF
 
 WORKING_DIR="$(cd "$(dirname "$0")" ; pwd)"
 cd "$WORKING_DIR"
-source "./env.sh"
+source "./env/platform-env.sh"
 
 TMPD="$(mktemp -d $(basename "$0").XXXXXX)"
 trap check_cleanup EXIT
