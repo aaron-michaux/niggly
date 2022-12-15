@@ -82,7 +82,7 @@ install_dependences()
         export DEBIAN_FRONTEND=noninteractive
         sudo apt-get install -y -qq \
              wget subversion automake swig python2.7-dev libedit-dev libncurses5-dev  \
-             python3-dev python3-pip python3-tk python3-lxml python3-six              \
+             gcc-multilib python3-dev python3-pip python3-tk python3-lxml python3-six \
              libparted-dev flex sphinx-doc guile-2.2 gperf gettext expect tcl dejagnu \
              libgmp-dev libmpfr-dev libmpc-dev patchelf liblz-dev pax-utils 
 
@@ -285,8 +285,8 @@ parse_basic_args()
         [ "$ARG" = "--libcxx" ]        && export STDLIB="libcxx" && continue
         [ "$ARG" = "--stdcxx" ]        && export STDLIB="stdcxx" && continue
 
-        [ "$LHS" = "--with-gcc=" ]     && export GCC_VERSION="gcc-$RHS" && continue
-        [ "$LHS" = "--with-llvm=" ]    && export LLVM_VERSION="clang-$RHS" && continue
+        [ "$LHS" = "--with-gcc" ]      && export GCC_VERSION="gcc-$RHS" && continue
+        [ "$LHS" = "--with-llvm" ]     && export LLVM_VERSION="clang-$RHS" && continue
 
         [ "$ARG" = "--toolchain" ]     && export TOOLCHAIN="$1" && shift && continue
         [ "$LHS" = "--toolchain" ]     && export TOOLCHAIN="$RHS" && continue

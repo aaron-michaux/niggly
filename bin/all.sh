@@ -2,6 +2,10 @@
 
 set -e
 
+WORKING_DIR="$(cd "$(dirname "$0")" ; pwd)"
+cd "$WORKING_DIR"
+source "./env/platform-env.sh"
+
 show_help()
 {
     cat <<EOF
@@ -10,12 +14,15 @@ show_help()
 
    Options:
 
-      --cleanup          Delete build files after installing
-      --no-cleanup       Do no delete build files. (The default.)
+      --cleanup               Delete build files after installing
+      --no-cleanup            Do no delete build files. (The default.)
 
-      --force-libs       Force rebuilding of all libraries
-      --force-tools      Force rebuilding of all tools
-      --force-toolchain  Force rebuilding of toolchains
+      --force-libs            Force rebuilding of all libraries
+      --force-tools           Force rebuilding of all tools
+      --force-toolchain       Force rebuilding of toolchains
+
+      --with-gcc=<version>    Use this GCC version, for stdcxx, or the full toolchain
+      --with-clang=<version>  Use this Clang/LLVM version, for libcxx, or the full toolchain
 
 EOF
 }
@@ -37,12 +44,20 @@ OPTIONS=""
 FORCE_LIBS=""
 FORCE_TOOLS=""
 FORCE_TOOLCHAIN=""
+GCC_VERSION="$DEFAULT_GCC_VERSION"
+LLVM_VERSION="$DEFAULT_LLVM_VERSION"
 for ARG in "$@" ; do
-    [ "$ARG" = "--cleanup" ] && OPTIONS="$ARG $OPTIONS" && continue
-    [ "$ARG" = "--no-cleanup" ] && OPTIONS="$ARG $OPTIONS" && continue
-    [ "$ARG" = "--force-libs" ] && FORCE_LIBS="--force" && continue
-    [ "$ARG" = "--force-tools" ] && FORCE_TOOLS="--force" && continue
+    LHS=$(echo "$ARG" | awk -F= '{ print $1 }')
+    RHS=$(echo "$ARG" | awk -F= '{ print $2 }')
+
+    [ "$ARG" = "--cleanup" ]         && OPTIONS="$ARG $OPTIONS"   && continue
+    [ "$ARG" = "--no-cleanup" ]      && OPTIONS="$ARG $OPTIONS"   && continue
+    [ "$ARG" = "--force-libs" ]      && FORCE_LIBS="--force"      && continue
+    [ "$ARG" = "--force-tools" ]     && FORCE_TOOLS="--force"     && continue
     [ "$ARG" = "--force-toolchain" ] && FORCE_TOOLCHAIN="--force" && continue
+    [ "$LHS" = "--with-gcc" ]       && GCC_VERSION="gcc-$RHS"    && continue
+    [ "$LHS" = "--with-llvm" ]      && LLVM_VERSION="clang-$RHS" && continue
+
     echo "Unexpected argument '$ARG', aborting" 1>&2 && exit 1
 done
 if [ "$OPTIONS" = "" ] ; then
@@ -51,10 +66,6 @@ if [ "$OPTIONS" = "" ] ; then
 fi
 
 # ----------------------------------------------------------------------- action
-
-WORKING_DIR="$(cd "$(dirname "$0")" ; pwd)"
-cd "$WORKING_DIR"
-source "./env/platform-env.sh"
 
 # dependencies
 install_dependences
@@ -71,7 +82,8 @@ ensure_directory "$ARCH_DIR"
 
 # make toolchains
 for TOOLCHAIN in "$DEFAULT_LLVM_VERSION" "$DEFAULT_GCC_VERSION" ; do    
-    ./build-toolchain.sh  $OPTIONS  $FORCE_TOOLCHAIN  "$TOOLCHAIN"
+    ./build-toolchain.sh  $OPTIONS                       \
+                          $FORCE_TOOLCHAIN  "$TOOLCHAIN"
 done
 
 EXIT_CODE=0
@@ -90,7 +102,7 @@ install_library()
             if [ "$SKIP" = "${TOOLCHAIN}${STDLIB}" ] ; then
                 echo "Skipping $SCRIPT for $SKIP, this combination does not build"
             else
-                COMMAND="./$SCRIPT  $OPTIONS   $FORCE_LIBS  --toolchain=$TOOLCHAIN  $STDLIB"
+                COMMAND="./$SCRIPT  $OPTIONS  $FORCE_LIBS  --with-gcc=$GCC_VERSION  --with-clang=$LLVM_VERSION  --toolchain=$TOOLCHAIN  $STDLIB"
                 $COMMAND && SUCCESS="True" || SUCCESS="False"
                 if [ "$SUCCESS" = "False" ] ; then
                     echo "$COMMAND" >> $TMPF

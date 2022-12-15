@@ -17,3 +17,4 @@ bin/all.sh
 # Niggly Library
 
 Just a bunch of stuff I write to improve my C++ skills.
+
