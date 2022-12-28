@@ -28,7 +28,7 @@ RULE="all"
 CXXSTD="-std=c++2b"
 STDLIB="stdcxx"
 TARGET_OVERRIDE=""
-INSTALLATION_DIR="$PPWD"
+NIGGLY_ROOT_DIR="$PPWD"
 MAKEFILE="run.makefile"
 
 show_usage()
@@ -167,7 +167,7 @@ do_make
 
 if [ "$TARGET_OVERRIDE" = "" ] ; then
 
-    SUPP_DIR="$INSTALLATION_DIR/toolchain-config/suppressions"
+    SUPP_DIR="$NIGGLY_ROOT_DIR/toolchain-config/suppressions"
     
     export LSAN_OPTIONS="suppressions=$SUPP_DIR/lsan.supp"
     export ASAN_OPTIONS="protect_shadow_gap=0,detect_leaks=0"
@@ -184,7 +184,7 @@ if [ "$TARGET_OVERRIDE" = "" ] ; then
         exit 1
     fi
     
-    source "$INSTALLATION_DIR/bin/env/platform-env.sh"
+    source "$NIGGLY_ROOT_DIR/bin/env/platform-env.sh"
     VALGRIND_EXE="$TOOLS_DIR/bin/valgrind"
     
     RET=0    
