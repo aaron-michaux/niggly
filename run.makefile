@@ -59,8 +59,8 @@ ifneq ("$(MKFILE_DIR)", "$(CURDIR)")
 endif
 
 # Add base makefile rules
-INSTALLATION_DIR:=$(CURDIR)
-BASE_MAKE_FILE:=$(INSTALLATION_DIR)/toolchain-config/base.inc.makefile
+NIGGLY_ROOT_DIR:=$(CURDIR)
+BASE_MAKE_FILE:=$(NIGGLY_ROOT_DIR)/toolchain-config/base.inc.makefile
 include $(BASE_MAKE_FILE)
 
 # -------------------------------------------------------------------------------------------- Rules

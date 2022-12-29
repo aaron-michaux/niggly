@@ -14,11 +14,11 @@ ifeq (, $(shell test -f "$(MAKE_ENV_INC_FILE)" && rm -f "$(MAKE_ENV_INC_FILE)" &
    $(trace "Removing $(MAKE_ENV_INC_FILE)")
 endif
 
-MAKE_ENV_INC_FILE:=$(shell $(INSTALLATION_DIR)/bin/env/toolchain-env.sh --print --write-make-env-inc --target=$(TARGET) --toolchain=$(TOOLCHAIN) --stdlib=$(STDLIB) --build-config=$(BUILD_CONFIG) --lto=$(LTO) --coverage=$(COVERAGE) --unity=$(UNITY_BUILD) --build-tests=$(BUILD_TESTS) --build-examples=$(BUILD_EXAMPLES) --benchmark=$(BENCHMARK) 2>&1 | grep MAKE_ENV_INC_FILE | awk -F= '{ print $$2 }' || true)
+MAKE_ENV_INC_FILE:=$(shell $(NIGGLY_ROOT_DIR)/bin/env/toolchain-env.sh --print --write-make-env-inc --target=$(TARGET) --toolchain=$(TOOLCHAIN) --stdlib=$(STDLIB) --build-config=$(BUILD_CONFIG) --lto=$(LTO) --coverage=$(COVERAGE) --unity=$(UNITY_BUILD) --build-tests=$(BUILD_TESTS) --build-examples=$(BUILD_EXAMPLES) --benchmark=$(BENCHMARK) 2>&1 | grep MAKE_ENV_INC_FILE | awk -F= '{ print $$2 }' || true)
 
 ifeq (, $(shell test -f "$(MAKE_ENV_INC_FILE)" && echo "found"))
    $(info Error running 'toolchain-env.sh' script, try running:)
-   $(info $(INSTALLATION_DIR)/bin/env/toolchain-env.sh --print --write-make-env-inc --target=$(TARGET) --toolchain=$(TOOLCHAIN) --stdlib=$(STDLIB) --build-config=$(BUILD_CONFIG) --lto=$(LTO) --coverage=$(COVERAGE) --unity=$(UNITY_BUILD) --build-tests=$(BUILD_TESTS) --build-examples=$(BUILD_EXAMPLES) --benchmark=$(BENCHMARK))
+   $(info $(NIGGLY_ROOT_DIR)/bin/env/toolchain-env.sh --print --write-make-env-inc --target=$(TARGET) --toolchain=$(TOOLCHAIN) --stdlib=$(STDLIB) --build-config=$(BUILD_CONFIG) --lto=$(LTO) --coverage=$(COVERAGE) --unity=$(UNITY_BUILD) --build-tests=$(BUILD_TESTS) --build-examples=$(BUILD_EXAMPLES) --benchmark=$(BENCHMARK))
    $(error "Aborting")
 endif
 
@@ -26,7 +26,7 @@ include $(MAKE_ENV_INC_FILE)
 
 # ------------------------------------------------------------------------------------ Toolchain Env
 
-TOOLCHAIN_ENV_INC_FILE:=$(INSTALLATION_DIR)/toolchain-config/toolchains/$(TOOL)-$(MAJOR_VERSION).inc.makefile
+TOOLCHAIN_ENV_INC_FILE:=$(NIGGLY_ROOT_DIR)/toolchain-config/toolchains/$(TOOL)-$(MAJOR_VERSION).inc.makefile
 ifeq (, $(shell test -f "$(TOOLCHAIN_ENV_INC_FILE)" && echo "found"))
    $(error "Error: failed to find toolchain inc file: '$(TOOLCHAIN_ENV_INC_FILE)'")
 endif
