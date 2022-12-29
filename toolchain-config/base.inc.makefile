@@ -41,6 +41,7 @@ GRPC_CPP_PLUGIN:=$(INSTALL_PREFIX)/bin/grpc_cpp_plugin
 # This is the "toolchain" file to be included
 TARGET_DIR?=build/$(UNIQUE_DIR)
 EXTRA_OBJECTS?=
+GEN_HEADERS?=
 DEB_LIBS?=
 GCMDIR:=$(BUILD_DIR)/gcm.cache
 CPP_SOURCES:=$(filter %.cpp, $(SOURCES))
@@ -153,7 +154,7 @@ default: all
 $(ISVERBOSE).SILENT:
 
 # The build-unity rule
-.PHONY: $(UNITY_O)
+.PHONY: $(UNITY_O) 
 $(UNITY_O): $(CPP_SOURCES)
 	@echo '$(BANNER)unity-build $@$(BANEND)'
 	mkdir -p $(dir $@)
@@ -164,40 +165,49 @@ unity_cpp: $(CPP_SOURCES)
 	echo $^ | tr ' ' '\n' | sort | grep -Ev '^\s*$$' | sed 's,^,#include ",' | sed 's,$$,",'
 
 $(TARGET_DIR)/$(TARGET): $(OBJECTS) | $(addprefix $(BUILD_DIR)/lib/, $(DEP_LIBS))
-	@echo "$(BANNER)c++ $<$(BANEND)"
+	@echo "$(BANNER)c++ $@$(BANEND)"
 	mkdir -p $(dir $@)
 	$(CXX) $^ $(LDFLAGS_F) -o $@
 	@$(RECIPETAIL)
 
-$(BUILD_DIR)/%.o: %.cpp
+$(BUILD_DIR)/%.o: %.cpp | generated-headers
 	@echo "$(BANNER)c++ $<$(BANEND)"
 	mkdir -p $(dir $@)
 	$(CXX) -x c++ $(CXXFLAGS_F) -MMD -MF $@.d -c $< -o $@
 	@$(RECIPETAIL)
 
-$(BUILD_DIR)/%.o: %.cc
+$(BUILD_DIR)/%.o: %.cc | generated-headers
 	@echo "$(BANNER)c++ $<$(BANEND)"
 	mkdir -p $(dir $@)
 	$(CXX) -x c++ $(CXXFLAGS_F) -MMD -MF $@.d -c $< -o $@
 	@$(RECIPETAIL)
 
-$(GEN_DIR)/%.pb.cc: %.proto
+$(BUILD_DIR)/%.o: %.c | generated-headers
+	@echo "$(BANNER)c $<$(BANEND)"
+	mkdir -p $(dir $@)
+	$(CXX) $(CXXFLAGS_F) -MMD -MF $@.d -c $< -o $@
+	@$(RECIPETAIL)
+
+$(GEN_DIR)/%.pb.cc $(GEN_DIR)/%.pb.h: %.proto
 	@echo "$(BANNER)protoc $<$(BANEND)"
 	mkdir -p $(dir $@)
 	$(PROTOC) -I $(dir $<) --cpp_out=$(dir $@) $<
 	@$(RECIPETAIL)
 
-$(GEN_DIR)/%.grpc.pb.cc: %.proto
+$(GEN_DIR)/%.grpc.pb.cc $(GEN_DIR)/%.grpc.pb.h: %.proto
 	@echo "$(BANNER)protoc-gen-grpc $<$(BANEND)"
 	mkdir -p $(dir $@)
 	$(PROTOC) -I $(dir $<) --grpc_out=$(dir $@) --plugin=protoc-gen-grpc=$(GRPC_CPP_PLUGIN) $<
 	@$(RECIPETAIL)
 
+.PHONY: generated-headers
+generated-headers: $(GEN_HEADERS)
+
 comp-database: | $(COMP_DATABASE)
 
 clean:
-	@echo rm -rf $(BUILD_DIR) $(TARGET_DIR)
-	@rm -rf $(BUILD_DIR) $(TARGET_DIR)
+	@echo rm -rf $(BUILD_DIR) $(TARGET_DIR) $(GEN_DIR)
+	@rm -rf $(BUILD_DIR) $(TARGET_DIR) $(GEN_DIR)
 
 coverage: $(TARGET_DIR)/$(TARGET)
 	@echo "running target"
@@ -261,3 +271,4 @@ info:
 	@echo "$(SOURCES)" | tr ' ' '\n' | grep -Ev '$$ *^' | sed 's,^,   ,'
 	@echo "OBJECTS:"
 	@echo "$(OBJECTS)" | tr ' ' '\n' | grep -Ev '$$ *^' | sed 's,^,   ,'
+
