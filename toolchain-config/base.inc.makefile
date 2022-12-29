@@ -33,14 +33,20 @@ endif
 
 include $(TOOLCHAIN_ENV_INC_FILE)
 
+PROTOC:=$(INSTALL_PREFIX)/bin/protoc
+GRPC_CPP_PLUGIN:=$(INSTALL_PREFIX)/bin/grpc_cpp_plugin
+
 # -------------------------------------------------------------------------------------------- Logic
 
 # This is the "toolchain" file to be included
 TARGET_DIR?=build/$(UNIQUE_DIR)
+EXTRA_OBJECTS?=
+DEB_LIBS?=
 GCMDIR:=$(BUILD_DIR)/gcm.cache
 CPP_SOURCES:=$(filter %.cpp, $(SOURCES))
+CC_SOURCES:=$(filter %.cc, $(SOURCES))
 C_SOURCES:=$(filter %.c, $(SOURCES))
-OBJECTS:=$(addprefix $(BUILD_DIR)/, $(patsubst %.cpp, %.o, $(CPP_SOURCES)) $(patsubst %.c, %.o, $(C_SOURCES)))
+OBJECTS:=$(addprefix $(BUILD_DIR)/, $(patsubst %.cpp, %.o, $(CPP_SOURCES)) $(patsubst %.cc, %.o, $(CC_SOURCES)) $(patsubst %.c, %.o, $(C_SOURCES)) $(EXTRA_OBJECTS))
 DEP_FILES:=$(addsuffix .d, $(OBJECTS))
 COMPDBS:=$(addprefix $(BUILD_DIR)/, $(patsubst %.cpp, %.comp-db.json, $(CPP_SOURCES)) $(patsubst %.c, %.comp-db.json, $(C_SOURCES)))
 COMP_DATABASE:=$(TARGET_DIR)/compilation-database.json
@@ -56,7 +62,7 @@ endif
 CFLAGS_0:=-isystem$(INSTALL_PREFIX)/include
 CXXFLAGS_0:=-isystem$(INSTALL_PREFIX)/include $(CXXLIB_FLAGS)
 LDFLAGS_0:=
-PREFIX_LD:=-L$(INSTALL_PREFIX)/lib -Wl,-rpath,$(INSTALL_PREFIX)/lib
+PREFIX_LD:=-L$(INSTALL_PREFIX)/lib -Wl,-rpath,$(INSTALL_PREFIX)/lib -L$(BUILD_DIR)/lib -Wl,-rpath,$(BUILD_DIR)/lib
 
 # Add asan|usan|tsan|debug|release|reldbg
 ifeq ($(BUILD_CONFIG), asan)
@@ -157,7 +163,7 @@ $(UNITY_O): $(CPP_SOURCES)
 unity_cpp: $(CPP_SOURCES)
 	echo $^ | tr ' ' '\n' | sort | grep -Ev '^\s*$$' | sed 's,^,#include ",' | sed 's,$$,",'
 
-$(TARGET_DIR)/$(TARGET): $(OBJECTS)
+$(TARGET_DIR)/$(TARGET): $(OBJECTS) | $(addprefix $(BUILD_DIR)/lib/, $(DEP_LIBS))
 	@echo "$(BANNER)c++ $<$(BANEND)"
 	mkdir -p $(dir $@)
 	$(CXX) $^ $(LDFLAGS_F) -o $@
@@ -167,6 +173,24 @@ $(BUILD_DIR)/%.o: %.cpp
 	@echo "$(BANNER)c++ $<$(BANEND)"
 	mkdir -p $(dir $@)
 	$(CXX) -x c++ $(CXXFLAGS_F) -MMD -MF $@.d -c $< -o $@
+	@$(RECIPETAIL)
+
+$(BUILD_DIR)/%.o: %.cc
+	@echo "$(BANNER)c++ $<$(BANEND)"
+	mkdir -p $(dir $@)
+	$(CXX) -x c++ $(CXXFLAGS_F) -MMD -MF $@.d -c $< -o $@
+	@$(RECIPETAIL)
+
+$(GEN_DIR)/%.pb.cc: %.proto
+	@echo "$(BANNER)protoc $<$(BANEND)"
+	mkdir -p $(dir $@)
+	$(PROTOC) -I $(dir $<) --cpp_out=$(dir $@) $<
+	@$(RECIPETAIL)
+
+$(GEN_DIR)/%.grpc.pb.cc: %.proto
+	@echo "$(BANNER)protoc-gen-grpc $<$(BANEND)"
+	mkdir -p $(dir $@)
+	$(PROTOC) -I $(dir $<) --grpc_out=$(dir $@) --plugin=protoc-gen-grpc=$(GRPC_CPP_PLUGIN) $<
 	@$(RECIPETAIL)
 
 comp-database: | $(COMP_DATABASE)
@@ -234,6 +258,6 @@ info:
 	@echo "CXXFLAGS:       $(CXXFLAGS_F)"
 	@echo "LDFLAGS:        $(LDFLAGS_F)"
 	@echo "SOURCES:"
-	@echo "$(SOURCES)" | sed 's,^,   ,'
+	@echo "$(SOURCES)" | tr ' ' '\n' | grep -Ev '$$ *^' | sed 's,^,   ,'
 	@echo "OBJECTS:"
-
+	@echo "$(OBJECTS)" | tr ' ' '\n' | grep -Ev '$$ *^' | sed 's,^,   ,'
