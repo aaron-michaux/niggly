@@ -56,8 +56,9 @@ ensure_directory()
     fi
     if [ ! -w "$D" ] ; then
         echo "Directory '$D' is not writable by $USER, chgrp..."
-        is_group staff && sudo chgrp -R staff "$D" || true
-        is_group adm   && sudo chgrp -R adm   "$D" || true
+        is_group staff && sudo chgrp -R staff "$D" || \
+                is_group adm   && sudo chgrp -R adm   "$D" || \
+                is_group $USER && sudo chgrp -R $USER "$D"
         sudo chmod 775 "$D"
     fi
     if [ ! -d "$D" ] || [ ! -w "$D" ] ; then
@@ -84,7 +85,8 @@ install_dependences()
              wget subversion automake swig python2.7-dev libedit-dev libncurses5-dev  \
              gcc-multilib python3-dev python3-pip python3-tk python3-lxml python3-six \
              libparted-dev flex sphinx-doc guile-2.2 gperf gettext expect tcl dejagnu \
-             libgmp-dev libmpfr-dev libmpc-dev patchelf liblz-dev pax-utils 
+             libgmp-dev libmpfr-dev libmpc-dev patchelf liblz-dev pax-utils bison flex \
+             libxapian-dev
 
     elif [ "$PLATFORM" = "macos" ] ; then
         which nproc 1>/dev/null 2>/dev/null || brew install coreutils
@@ -285,8 +287,9 @@ parse_basic_args()
         [ "$ARG" = "--libcxx" ]        && export STDLIB="libcxx" && continue
         [ "$ARG" = "--stdcxx" ]        && export STDLIB="stdcxx" && continue
 
-        [ "$LHS" = "--with-gcc" ]      && export GCC_VERSION="gcc-$RHS" && continue
-        [ "$LHS" = "--with-llvm" ]     && export LLVM_VERSION="clang-$RHS" && continue
+        [ "$LHS" = "--with-gcc" ]      && export GCC_VERSION="$RHS" && continue
+        [ "$LHS" = "--with-llvm" ]     && export LLVM_VERSION="$RHS" && continue
+        [ "$LHS" = "--with-clang" ]    && export LLVM_VERSION="$RHS" && continue
 
         [ "$ARG" = "--toolchain" ]     && export TOOLCHAIN="$1" && shift && continue
         [ "$LHS" = "--toolchain" ]     && export TOOLCHAIN="$RHS" && continue
@@ -300,6 +303,14 @@ parse_basic_args()
 
         echo "unexpected argument: '$ARG'" 1>&2 && exit 1
     done
+
+    if [ "$GCC_VERSION" != "" ] && [ "${GCC_VERSION:0:4}" != "gcc-" ] ; then
+        export GCC_VERSION="gcc-$GCC_VERSION"
+    fi
+
+    if [ "$LLVM_VERSION" != "" ] && [ "${LLVM_VERSION:0:6}" != "clang-" ] ; then
+        export LLVM_VERSION="clang-$LLVM_VERSION"
+    fi
 
     if [ "$TOOLCHAIN" = "" ] ; then
         if [ "$REQUIRE_TOOLCHAIN" = "True" ] || [ "$REQUIRE_TOOLCHAIN" = "UseToolchain" ]; then

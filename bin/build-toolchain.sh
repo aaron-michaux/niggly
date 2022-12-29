@@ -131,19 +131,6 @@ build_gcc()
          --with-gcc-major-version-only
     nice make -j$(nproc) 2>$SRCD/build/stderr.text | tee $SRCD/build/stdout.text
     nice make install | tee -a $SRCD/build/stdout.text
-
-    # Install symlinks to /usr/local
-    ensure_link "$PREFIX/bin/gcc-${MAJOR_VERSION}"        /usr/local/bin/gcc-${MAJOR_VERSION}
-    ensure_link "$PREFIX/bin/g++-${MAJOR_VERSION}"        /usr/local/bin/g++-${MAJOR_VERSION}
-    ensure_link "$PREFIX/bin/gcov-${MAJOR_VERSION}"       /usr/local/bin/gcov-${MAJOR_VERSION}
-    ensure_link "$PREFIX/bin/gcov-dump-${MAJOR_VERSION}"  /usr/local/bin/gcov-dump-${MAJOR_VERSION}
-    ensure_link "$PREFIX/bin/gcov-tool-${MAJOR_VERSION}"  /usr/local/bin/gcov-tool-${MAJOR_VERSION}
-    ensure_link "$PREFIX/bin/gcc-ranlib-${MAJOR_VERSION}" /usr/local/bin/gcc-ranlib-${MAJOR_VERSION}
-    ensure_link "$PREFIX/bin/gcc-ar-${MAJOR_VERSION}"     /usr/local/bin/gcc-ar-${MAJOR_VERSION}
-    ensure_link "$PREFIX/bin/gcc-nm-${MAJOR_VERSION}"     /usr/local/bin/gcc-nm-${MAJOR_VERSION}
-    ensure_link "$PREFIX/include/c++/${MAJOR_VERSION}"    /usr/local/include/c++/${MAJOR_VERSION}
-    ensure_link "$PREFIX/lib64"                           /usr/local/lib/gcc/${MAJOR_VERSION}
-    ensure_link "$PREFIX/lib/gcc"                         /usr/local/lib/gcc/${MAJOR_VERSION}/gcc
 }
 
 # ------------------------------------------------------------------------ parse
@@ -184,6 +171,20 @@ done
 if [ "$COMMAND" = "" ] ; then
     echo "Must specify a build command!" 1>&2 && exit 1
 fi
+
+if [ "$CLEANUP" = "True" ] ; then
+    TMPD="$(mktemp -d /tmp/$(basename "$SCRIPT_NAME" .sh).XXXXXX)"
+else
+    TMPD="/tmp/$(basename "$SCRIPT_NAME" .sh)-${USER}"
+fi
+
+trap cleanup EXIT
+cleanup()
+{
+    if [ "$CLEANUP" = "True" ] ; then
+        rm -rf "$TMPD"
+    fi
+}
 
 # ----------------------------------------------------------------------- action
 

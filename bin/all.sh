@@ -5,6 +5,7 @@ set -e
 WORKING_DIR="$(cd "$(dirname "$0")" ; pwd)"
 cd "$WORKING_DIR"
 source "./env/platform-env.sh"
+source "./env/cross-env.sh"
 
 show_help()
 {
@@ -55,8 +56,8 @@ for ARG in "$@" ; do
     [ "$ARG" = "--force-libs" ]      && FORCE_LIBS="--force"      && continue
     [ "$ARG" = "--force-tools" ]     && FORCE_TOOLS="--force"     && continue
     [ "$ARG" = "--force-toolchain" ] && FORCE_TOOLCHAIN="--force" && continue
-    [ "$LHS" = "--with-gcc" ]       && GCC_VERSION="gcc-$RHS"    && continue
-    [ "$LHS" = "--with-llvm" ]      && LLVM_VERSION="clang-$RHS" && continue
+    [ "$LHS" = "--with-gcc" ]        && GCC_VERSION="$RHS"        && continue
+    [ "$LHS" = "--with-llvm" ]       && LLVM_VERSION="$RHS"       && continue
 
     echo "Unexpected argument '$ARG', aborting" 1>&2 && exit 1
 done
@@ -92,17 +93,17 @@ install_library()
 {
     local SCRIPT="$1"
     local SKIP="$2"
-    for TOOLCHAIN in "gcc" "llvm" ; do
+    for TOOL in "gcc" "llvm" ; do
         for STDLIB in "--libcxx" "--stdcxx" ; do
-            if [ "$TOOLCHAIN" = "gcc" ] && [ "STDLIB" = "--libcxx" ] ; then
+            if [ "$TOOL" = "gcc" ] && [ "$STDLIB" = "--libcxx" ] ; then
                 # echo, let's not go there =)
                 continue
             fi
             
-            if [ "$SKIP" = "${TOOLCHAIN}${STDLIB}" ] ; then
+            if [ "$SKIP" = "${TOOL}${STDLIB}" ] ; then
                 echo "Skipping $SCRIPT for $SKIP, this combination does not build"
             else
-                COMMAND="./$SCRIPT  $OPTIONS  $FORCE_LIBS  --with-gcc=$GCC_VERSION  --with-clang=$LLVM_VERSION  --toolchain=$TOOLCHAIN  $STDLIB"
+                COMMAND="./$SCRIPT  $OPTIONS  $FORCE_LIBS  --with-gcc=$GCC_VERSION  --with-clang=$LLVM_VERSION  --toolchain=$TOOL  $STDLIB"
                 $COMMAND && SUCCESS="True" || SUCCESS="False"
                 if [ "$SUCCESS" = "False" ] ; then
                     echo "$COMMAND" >> $TMPF
