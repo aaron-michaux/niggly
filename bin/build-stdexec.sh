@@ -21,7 +21,7 @@ $(show_help_snippet)
 
    Repos:
 
-      https://github.com/facebookexperimental/libunifex
+      https://github.com/NVIDIA/stdexec
 
 EOF
 }
