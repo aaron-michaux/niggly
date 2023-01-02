@@ -49,7 +49,7 @@ CC_SOURCES:=$(filter %.cc, $(SOURCES))
 C_SOURCES:=$(filter %.c, $(SOURCES))
 OBJECTS:=$(addprefix $(BUILD_DIR)/, $(patsubst %.cpp, %.o, $(CPP_SOURCES)) $(patsubst %.cc, %.o, $(CC_SOURCES)) $(patsubst %.c, %.o, $(C_SOURCES)) $(EXTRA_OBJECTS))
 DEP_FILES:=$(addsuffix .d, $(OBJECTS))
-COMPDBS:=$(addprefix $(BUILD_DIR)/, $(patsubst %.cpp, %.comp-db.json, $(CPP_SOURCES)) $(patsubst %.c, %.comp-db.json, $(C_SOURCES)))
+COMPDBS:=$(addprefix $(BUILD_DIR)/, $(patsubst %.cpp, %.comp-db.json, $(CPP_SOURCES)) $(patsubst %.cc, %.comp-db.json, $(CC_SOURCES)) $(patsubst %.c, %.comp-db.json, $(C_SOURCES)))
 COMP_DATABASE:=$(TARGET_DIR)/compilation-database.json
 
 # Unity build
@@ -185,7 +185,7 @@ $(BUILD_DIR)/%.o: %.cc | generated-headers
 $(BUILD_DIR)/%.o: %.c | generated-headers
 	@echo "$(BANNER)c $<$(BANEND)"
 	mkdir -p $(dir $@)
-	$(CXX) $(CXXFLAGS_F) -MMD -MF $@.d -c $< -o $@
+	$(CC) $(CFLAGS_F) -MMD -MF $@.d -c $< -o $@
 	@$(RECIPETAIL)
 
 $(GEN_DIR)/%.pb.cc $(GEN_DIR)/%.pb.h: %.proto
@@ -203,11 +203,9 @@ $(GEN_DIR)/%.grpc.pb.cc $(GEN_DIR)/%.grpc.pb.h: %.proto
 .PHONY: generated-headers
 generated-headers: $(GEN_HEADERS)
 
-comp-database: | $(COMP_DATABASE)
-
 clean:
 	@echo rm -rf $(BUILD_DIR) $(TARGET_DIR) $(GEN_DIR)
-	@rm -rf $(BUILD_DIR) $(TARGET_DIR) $(GEN_DIR)
+	@rm -rf $(BUILD_DIR) $(TARGET_DIR) $(GEN_DIR) $(COMP_DATABASE) compile_commands.json
 
 coverage: $(TARGET_DIR)/$(TARGET)
 	@echo "running target"
@@ -232,14 +230,21 @@ llvm_coverage_html: $(TARGETDIR)/$(TARGET)
 	genhtml $(TARGETDIR)/app_info.info --output-directory build/html/coverage
 
 $(COMP_DATABASE): $(COMPDBS)
-	@echo '$(BANNER)c++-system-header $<$(BANEND)'
+	@echo '$(BANNER)$@$(BANEND)'
 	mkdir -p "$(dir $@)"
 	echo "[" > $@
 	cat $(COMPDBS) >> $@
 	$(SED) -i '$$d' $@
 	echo "]" >> $@
+	@$(RECIPETAIL)
 
-$(BUILD_DIR)/%.comp-db.json: %.cpp
+compile_commands.json: $(COMP_DATABASE)
+	@echo '$(BANNER)$@$(BANEND)'
+	rm -f $@
+	ln -s $(COMP_DATABASE) $@
+	@$(RECIPETAIL)
+
+$(BUILD_DIR)/%.comp-db.json: %.cpp | generated-headers
 	@echo "$(BANNER)comp-db $<$(BANEND)"
 	mkdir -p $(dir $@)
 	printf "{ \"directory\": \"%s\",\n" "$$(echo "$(CURDIR)" | sed 's,\\,\\\\,g' | sed 's,",\\",g')" > $@
@@ -248,6 +253,27 @@ $(BUILD_DIR)/%.comp-db.json: %.cpp
 	printf "  \"output\":    \"%s\" }\n" "$$(echo "$@" | sed 's,\\,\\\\,g' | sed 's,",\\",g')" >> $@
 	printf ",\n" >> $@
 	@$(RECIPETAIL)
+
+$(BUILD_DIR)/%.comp-db.json: %.cc | generated-headers
+	@echo "$(BANNER)comp-db $<$(BANEND)"
+	mkdir -p $(dir $@)
+	printf "{ \"directory\": \"%s\",\n" "$$(echo "$(CURDIR)" | sed 's,\\,\\\\,g' | sed 's,",\\",g')" > $@
+	printf "  \"file\":      \"%s\",\n" "$$(echo "$<" | sed 's,\\,\\\\,g' | sed 's,",\\",g')" >> $@
+	printf "  \"command\":   \"%s\",\n" "$$(echo "$(CXX) -x c++ $(CXXFLAGS_F) -c $< -o $@" | sed 's,\\,\\\\,g' | sed 's,",\\",g')" >> $@
+	printf "  \"output\":    \"%s\" }\n" "$$(echo "$@" | sed 's,\\,\\\\,g' | sed 's,",\\",g')" >> $@
+	printf ",\n" >> $@
+	@$(RECIPETAIL)
+
+$(BUILD_DIR)/%.comp-db.json: %.c | generated-headers
+	@echo "$(BANNER)comp-db $<$(BANEND)"
+	mkdir -p $(dir $@)
+	printf "{ \"directory\": \"%s\",\n" "$$(echo "$(CURDIR)" | sed 's,\\,\\\\,g' | sed 's,",\\",g')" > $@
+	printf "  \"file\":      \"%s\",\n" "$$(echo "$<" | sed 's,\\,\\\\,g' | sed 's,",\\",g')" >> $@
+	printf "  \"command\":   \"%s\",\n" "$$(echo "$(CC) -x c $(CFLAGS_F) -c $< -o $@" | sed 's,\\,\\\\,g' | sed 's,",\\",g')" >> $@
+	printf "  \"output\":    \"%s\" }\n" "$$(echo "$@" | sed 's,\\,\\\\,g' | sed 's,",\\",g')" >> $@
+	printf ",\n" >> $@
+	@$(RECIPETAIL)
+
 
 info:
 	@echo "CURDIR:         $(CURDIR)"

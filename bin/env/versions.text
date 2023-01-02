@@ -18,3 +18,4 @@ build-spdlog.sh            v1.11.0
 build-stdexec.sh           218931e835b0313c67be469adb721df8c43eb684
 build-unifex.sh            591ec09e7d51858ad05be979d4034574215f5971
 build-valgrind.sh          3.20.0
+build-universal-ctags.sh   v6.0.0
