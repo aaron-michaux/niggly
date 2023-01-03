@@ -47,17 +47,20 @@ build_doxygen()
     export CC="$HOST_CC"
     export CXX="$HOST_CXX"
     export CFLAGS="-fPIC -O3 -isystem$LLVM_DIR/include"
-    export CXXFLAGS="-fPIC -O3 -isystem$LLVM_DIR/include"
+    export CXXFLAGS="-std=c++17 -fPIC -O3 -isystem$LLVM_DIR/include"
     export LDFLAGS="-L$LLVM_DIR/lib -Wl,-rpath,$LLVM_DIR/lib"
 
+    [ "$PLATFORM" = "macos" ] && EXTRA_ARGS="-DCMAKE_OSX_DEPLOYMENT_TARGET=11.1" || EXTRA_ARGS=""
+    
     # export CMAKE_PREFIX_PATH=$TOOLS_DIR
     $CMAKE -D CMAKE_BUILD_TYPE=Release             \
            -D english_only=ON                      \
            -D build_doc=OFF                        \
-           -D build_wizard=ON                      \
+           -D build_wizard=OFF                     \
            -D build_search=ON                      \
            -D build_xmlparser=ON                   \
            -D CMAKE_INSTALL_PREFIX:PATH=$TOOLS_DIR \
+           $EXTRA_ARGS                             \
            ..
 
     nice make -j$(nproc)

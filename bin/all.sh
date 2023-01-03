@@ -79,8 +79,12 @@ ensure_directory "$ARCH_DIR"
 # make tools
 ./build-cmake.sh            $OPTIONS  $FORCE_TOOLS
 ./build-doxygen.sh          $OPTIONS  $FORCE_TOOLS
-./build-valgrind.sh         $OPTIONS  $FORCE_TOOLS
 ./build-universal-ctags.sh  $OPTIONS  $FORCE_TOOLS
+
+if [ "$PLATFORM" != "macos" ] ; then
+    # Valgrind not supported
+    ./build-valgrind.sh         $OPTIONS  $FORCE_TOOLS
+fi
 
 # make toolchains
 for TOOLCHAIN in "$DEFAULT_LLVM_VERSION" "$DEFAULT_GCC_VERSION" ; do    

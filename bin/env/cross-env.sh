@@ -91,7 +91,14 @@ install_dependences()
     elif [ "$PLATFORM" = "macos" ] ; then
         which nproc 1>/dev/null 2>/dev/null || brew install coreutils
         which gsed  1>/dev/null 2>/dev/null || brew install gnu-sed
-        
+        [ ! -x "/opt/homebrew/opt/bison/bin/bison" ] && brew install bison || true
+        [ ! -d "/opt/homebrew/Cellar/xapian" ] && brew install xapian || true
+
+        # Homebrew install bison in this directory (!)
+        if [ "$(which bison)" != "/opt/homebrew/opt/bison/bin/bison" ] ; then
+            export PATH="/opt/homebrew/opt/bison/bin:$PATH"
+            #export LDFLAGS="-L/opt/homebrew/opt/bison/lib"
+        fi        
     fi
 }
 
