@@ -241,7 +241,7 @@ $(COMP_DATABASE): $(COMPDBS)
 compile_commands.json: $(COMP_DATABASE)
 	@echo '$(BANNER)$@$(BANEND)'
 	rm -f $@
-	ln -s $(COMP_DATABASE) $@
+	ln $(COMP_DATABASE) $@
 	@$(RECIPETAIL)
 
 $(BUILD_DIR)/%.comp-db.json: %.cpp | generated-headers
