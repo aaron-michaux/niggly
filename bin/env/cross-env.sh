@@ -47,6 +47,19 @@ is_group()
     cat /etc/group | grep -qE "^${GROUP}:" && return 0 || return 1
 }
 
+test_add_group()
+{
+    local DIR="$1"
+    shift    
+    for GROUP in "$@" ; do
+        if is_group "$GROUP" ; then
+            sudo chgrp -R "$GROUP" "$DIR"
+            return 0
+        fi
+    done
+    return 1
+}
+
 ensure_directory()
 {
     local D="$1"
@@ -56,9 +69,7 @@ ensure_directory()
     fi
     if [ ! -w "$D" ] ; then
         echo "Directory '$D' is not writable by $USER, chgrp..."
-        is_group staff && sudo chgrp -R staff "$D" || \
-                is_group adm   && sudo chgrp -R adm   "$D" || \
-                is_group $USER && sudo chgrp -R $USER "$D"
+        test_add_group "$D" "staff" "adm" "$USER" 
         sudo chmod 775 "$D"
     fi
     if [ ! -d "$D" ] || [ ! -w "$D" ] ; then
@@ -88,6 +99,12 @@ install_dependences()
              libgmp-dev libmpfr-dev libmpc-dev patchelf liblz-dev pax-utils bison flex \
              libxapian-dev
 
+    elif [ "$PLATFORM" = "oracle" ] || [ "$PLATFORM" = "fedora" ] ; then
+        which bison 1>/dev/null 2>/dev/null || sudo yum install -y bison
+        if [ ! -x /usr/bin/xapian-config ] ;then
+           sudo yum install -y xapian-core-devel
+        fi
+        
     elif [ "$PLATFORM" = "macos" ] ; then
         which nproc 1>/dev/null 2>/dev/null || brew install coreutils
         which gsed  1>/dev/null 2>/dev/null || brew install gnu-sed
