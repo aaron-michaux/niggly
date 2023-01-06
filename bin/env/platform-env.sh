@@ -7,6 +7,7 @@ export TOOLCHAINS_DIR=/opt/toolchains
 export ARCH_DIR=/opt/arch
 
 # The default clang/gcc with the default cxxstd
+# Note: on macos, the major versions of these are installed using brew
 export DEFAULT_LLVM_VERSION="clang-15.0.6"
 export DEFAULT_GCC_VERSION="gcc-12.2.0"
 
@@ -33,4 +34,9 @@ if [ -z ${PLATFORM+x} ] ; then
         export PLATFORM="oracle"
     fi
 fi
+
+major_version()
+{
+    echo "$1" | cut -d - -f 2 - | cut -d . -f 1
+}
 

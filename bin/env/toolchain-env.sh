@@ -45,8 +45,13 @@ TARGET=""
 TOOL=""
 GCC_SUFFIX=""
 STDLIB=""
-GCC_INSTALLATION="$TOOLCHAINS_DIR/$DEFAULT_GCC_VERSION"
-CLANG_INSTALLATION="$TOOLCHAINS_DIR/$DEFAULT_LLVM_VERSION"
+if [ "$PLATFORM" = "macos" ] ; then
+    GCC_INSTALLATION="/opt/homebrew/opt/gcc@$(major_version ${DEFAULT_GCC_VERSION})"
+    CLANG_INSTALLATION="/opt/homebrew/opt/llvm@$(major_version ${DEFAULT_LLVM_VERSION})"
+else
+    GCC_INSTALLATION="$TOOLCHAINS_DIR/$DEFAULT_GCC_VERSION"
+    CLANG_INSTALLATION="$TOOLCHAINS_DIR/$DEFAULT_LLVM_VERSION"
+fi
 BUILD_CONFIG="debug"
 LTO="False"
 COVERAGE="False"
@@ -172,7 +177,13 @@ fi
 [ ! -f "$LLVM_COV" ] && LLVM_COV="" || true
 [ ! -f "$LLVM_PROFDATA" ] && LLVM_PROFDATA="" || true
 
-TRIPLE_LIST="$(uname -m)-linux-gnu $(uname -m)-pc-linux-gnu $(uname -m)-unknown-linux-gnu"
+if [ "$PLATFORM" = "macos" ] ; then
+    [ "$(uname -m)" = "arm64" ] && ARCH="aarch64" || ARCH="x86_64"
+    DARWIN_NUM="$(uname -r | cut -d . -f 1)"
+    TRIPLE_LIST="${ARCH}-apple-darwin${DARWIN_NUM} ${ARCH}-apple-darwin$(expr ${DARWIN_NUM} - 1) ${ARCH}-apple-darwin$(expr ${DARWIN_NUM} - 2)"
+else
+    TRIPLE_LIST="$(uname -m)-linux-gnu $(uname -m)-pc-linux-gnu $(uname -m)-unknown-linux-gnu"
+fi
 
 # Compile flags
 if [ "$STDLIB" = "stdcxx" ] && [ "$GCC_INSTALLATION" = "" ] ; then
@@ -185,54 +196,64 @@ elif [ "$STDLIB" = "stdcxx" ] && [ "$GCC_INSTALLATION" != "" ] ; then
     # Get the major version
     DIR="$GCC_INSTALLATION/include/c++"
     NPARTS="$(echo "$DIR" | tr '/' '\n' | wc -l)"
-    CC_MAJOR_VERSION="$(find "$DIR" -maxdepth 1 -type d | grep -Ev "^$DIR\$" | awk -F/ '{ print $NF }' | sort -g | tail -n 1)"
+    CC_MAJOR_VERSION="$(find "$DIR" -maxdepth 1 -type d | grep "$DIR/" | awk -F/ '{ print $NF }' | sort -g | tail -n 1)"
     
     CPP_DIR="$GCC_INSTALLATION/include/c++/$CC_MAJOR_VERSION"
 
     CPP_INC_TRIPLE_DIR=""
-    for TRIPLE in $TRIPLE_LIST ; do
-        if [ -d "$CPP_DIR/$TRIPLE" ] ; then
-            CPP_INC_TRIPLE_DIR="$CPP_DIR/$TRIPLE"
-            break
-        fi
-    done
-    if [ "$CPP_INC_TRIPLE_DIR" = "" ] ; then
-        echo "Failed to find $CPP_DIR/[$TRIPLE_LIST] directory" 1>&2 && exit 1
-    fi
-    
     CPP_LIB_TRIPLE_DIR=""
     for TRIPLE in $TRIPLE_LIST ; do
         if [ -d "$CPP_DIR/$TRIPLE" ] ; then
-            CPP_LIB_TRIPLE_DIR="$GCC_INSTALLATION/lib/gcc/$TRIPLE/$CC_MAJOR_VERSION"
+            CPP_INC_TRIPLE_DIR="$CPP_DIR/$TRIPLE"
+            if [ "$PLATFORM" = "macos" ] ; then
+                CPP_LIB_TRIPLE_DIR="$GCC_INSTALLATION/lib/gcc/$CC_MAJOR_VERSION"
+            else
+                CPP_LIB_TRIPLE_DIR="$GCC_INSTALLATION/lib/gcc/$TRIPLE/$CC_MAJOR_VERSION"
+            fi
             break
         fi
     done
-    if [ "$CPP_LIB_TRIPLE_DIR" = "" ] ; then
+    if [ ! -d "$CPP_INC_TRIPLE_DIR" ] ; then
+        echo "Failed to find $CPP_DIR/[$TRIPLE_LIST] directory" 1>&2 && exit 1
+    fi
+    if [ ! -d "$CPP_LIB_TRIPLE_DIR" ] ; then
         echo "Failed to find $GCC_INSTALLATION/lib/gcc/[$TRIPLE_LIST]/$CC_MAJOR_VERSION directory" 1>&2 && exit 1
-    fi    
+    fi
 
+    
     [ "$TOOL" = "gcc" ] && CXXLIB_FLAGS="" || CXXLIB_FLAGS="-nostdinc++ "
     CXXLIB_FLAGS+="-isystem$CPP_DIR -isystem$CPP_INC_TRIPLE_DIR"
     CXXLIB_LDFLAGS=""
-    CXXLIB_LIBS="-L$GCC_INSTALLATION/lib64 -Wl,-rpath,$GCC_INSTALLATION/lib64 -L$CPP_LIB_TRIPLE_DIR -Wl,-rpath,$CPP_LIB_TRIPLE_DIR -lstdc++"
+    CXXLIB_LIBS=""
+    if [ "$PLATFORM" != "macos" ] ; then
+        CXXLIB_LIBS+="-L$GCC_INSTALLATION/lib64 -Wl,-rpath,$GCC_INSTALLATION/lib64"
+    fi
+    CXXLIB_LIBS+=" -L$CPP_LIB_TRIPLE_DIR -Wl,-rpath,$CPP_LIB_TRIPLE_DIR -lstdc++"
 
 elif [ "$STDLIB" = "libcxx" ] && [ "$CLANG_INSTALLATION" != "" ] ; then
     # --------------------------------------------------------------------------------------- libcxx
     TRIPLE=""
-    for TEST_TRIPLE in $TRIPLE_LIST ; do
-        if [ -d "$CLANG_INSTALLATION/include/$TEST_TRIPLE/c++/v1" ] ; then
-            TRIPLE="$TEST_TRIPLE"
-            break
+    if [ "$PLATFORM" != "macos" ] ; then        
+        for TEST_TRIPLE in $TRIPLE_LIST ; do
+            if [ -d "$CLANG_INSTALLATION/include/$TEST_TRIPLE/c++/v1" ] ; then
+                TRIPLE="$TEST_TRIPLE"
+                break
+            fi
+        done
+        if [ "$TRIPLE" = "" ] ; then
+            echo "Failed to find libcxx directory $CLANG_INSTALLATION/include/[$TRIPLE_LIST]/c++/v1" 1>&2
+            exit 1
         fi
-    done
-    if [ "$TRIPLE" = "" ] ; then
-        echo "Failed to find libcxx directory $CLANG_INSTALLATION/include/[$TRIPLE_LIST]/c++/v1" 1>&2
-        exit 1
     fi
     
-    PLATFORM_INC_DIR="$CLANG_INSTALLATION/include/$TRIPLE/c++/v1"
     CPPINC_DIR="$CLANG_INSTALLATION/include"
-    CPPLIB_DIR="$CLANG_INSTALLATION/lib/$TRIPLE"
+    if [ "$PLATFORM" = "macos" ] ; then
+        PLATFORM_INC_DIR="$CLANG_INSTALLATION/include/c++/v1"
+        CPPLIB_DIR="$CLANG_INSTALLATION/lib"
+    else
+        PLATFORM_INC_DIR="$CLANG_INSTALLATION/include/$TRIPLE/c++/v1"
+        CPPLIB_DIR="$CLANG_INSTALLATION/lib/$TRIPLE"
+    fi
     if [ ! -d "$PLATFORM_INC_DIR" ] ; then
         echo "libcxx c++ directory not found: '$PLATFORM_INC_DIR'" 1>&2 && exit 1
     fi

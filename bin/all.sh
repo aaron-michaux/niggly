@@ -87,10 +87,12 @@ if [ "$PLATFORM" != "macos" ] ; then
 fi
 
 # make toolchains
-for TOOLCHAIN in "$DEFAULT_LLVM_VERSION" "$DEFAULT_GCC_VERSION" ; do    
-    ./build-toolchain.sh  $OPTIONS                       \
-                          $FORCE_TOOLCHAIN  "$TOOLCHAIN"
-done
+if [ "$PLATFORM" != "macos" ] ; then
+    for TOOLCHAIN in "$DEFAULT_LLVM_VERSION" "$DEFAULT_GCC_VERSION" ; do    
+        ./build-toolchain.sh  $OPTIONS                       \
+                              $FORCE_TOOLCHAIN  "$TOOLCHAIN"
+    done
+fi
 
 EXIT_CODE=0
 
@@ -104,6 +106,12 @@ install_library()
                 # echo, let's not go there =)
                 continue
             fi
+
+            if [ "$PLATFORM" = "macos" ] && [ "$TOOL" = "llvm" ] && [ "$STDLIB" = "--stdcxx" ] ; then
+                # TODO: figure out why there's linker errors
+                continue
+            fi
+
             
             if [ "$SKIP" = "${TOOL}${STDLIB}" ] ; then
                 echo "Skipping $SCRIPT for $SKIP, this combination does not build"

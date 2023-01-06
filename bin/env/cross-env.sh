@@ -86,6 +86,19 @@ ensure_llvm_dir()
     fi
 }
 
+get_toolchain_dir()
+{
+    local TOOLCHAIN="$1"
+
+    if [ "$PLATFORM" = "macos" ] ; then
+        local TOOL="$(echo "$TOOLCHAIN" | cut -d - -f 1)"
+        [ "$TOOL" = "clang" ] && TOOL="llvm" || true
+        echo "/opt/homebrew/opt/${TOOL}@$(major_version "$TOOLCHAIN")"
+    else
+        echo "$TOOLCHAINS_DIR/$TOOLCHAIN"
+    fi
+}
+
 install_dependences()
 {    
     # If compiling for a different platforms, we'd augment this files with
@@ -114,21 +127,26 @@ install_dependences()
         # Homebrew install bison in this directory (!)
         if [ "$(which bison)" != "/opt/homebrew/opt/bison/bin/bison" ] ; then
             export PATH="/opt/homebrew/opt/bison/bin:$PATH"
-            #export LDFLAGS="-L/opt/homebrew/opt/bison/lib"
-        fi        
+        fi
+        
+        if [ ! -d "$(get_toolchain_dir "$DEFAULT_LLVM_VERSION")" ] ; then
+            brew install "llvm@$(major_version "$DEFAULT_LLVM_VERSION")"
+        fi
+        if [ ! -d "$(get_toolchain_dir "$DEFAULT_GCC_VERSION")" ] ; then
+            brew install "gcc@$(major_version "$DEFAULT_GCC_VERSION")"
+        fi
     fi
 }
 
 ensure_toolchain_is_valid()
 {
     local TOOLCHAIN="$1"
-    local TOOLCHAIN_ROOT="$TOOLCHAINS_DIR/$TOOLCHAIN"
-
+    
     if [ "$TOOLCHAIN" = "" ] ; then
         echo "Toolchain not specified" 1>&2
         exit 1
         
-    elif [ ! -d "$TOOLCHAIN_ROOT" ] ; then
+    elif [ ! -d "$(get_toolchain_dir "$TOOLCHAIN")" ] ; then
         echo "Toolchain not found: '$TOOLCHAIN_ROOT'" 1>&2
         exit 1
     fi
@@ -143,9 +161,6 @@ list_toolchains()
 
 crosstool_setup()
 {
-    # So, TOOLCHAIN could be gcc-12.2.0, but ALT_TOOLCHAIN would be clang-15.0.6
-    # In this case, we use gcc, but lld, libcxx, is found under 'clang-15.0.6'
-
     local TOOLCHAIN="$1"
     local GCC_TOOLCHAIN="$2"
     local LLVM_TOOLCHAIN="$3"
@@ -164,10 +179,10 @@ crosstool_setup()
         export CXXSTD="$LLVM_CXXSTD"
     fi
     
-    GCC_MAJOR_VERSION="$(echo ${GCC_TOOLCHAIN:4} | awk -F. '{ print $1 }')"
+    GCC_MAJOR_VERSION="$(major_version "${GCC_TOOLCHAIN}")"
 
-    export GCC_DIR="$TOOLCHAINS_DIR/$GCC_TOOLCHAIN"
-    export LLVM_DIR="$TOOLCHAINS_DIR/$LLVM_TOOLCHAIN"
+    export GCC_DIR="$(get_toolchain_dir $GCC_TOOLCHAIN)"
+    export LLVM_DIR="$(get_toolchain_dir $LLVM_TOOLCHAIN)"
 
     source "$(dirname "$BASH_SOURCE")/toolchain-env.sh"   \
         --gcc-suffix="-${GCC_MAJOR_VERSION}" \
