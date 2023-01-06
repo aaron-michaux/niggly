@@ -30,6 +30,8 @@ if [ -z ${PLATFORM+x} ] ; then
         export PLATFORM="fedora"
     elif [ "$(uname -s)" = "Darwin" ] ; then
         export PLATFORM="macos"
+        export LIBTOOL=glibtool
+        export LIBTOOLIZE=glibtoolize 
     elif [ -f /etc/os-release ] && cat /etc/os-release | grep -qi Oracle  ; then
         export PLATFORM="oracle"
     fi
